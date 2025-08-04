@@ -1,0 +1,51 @@
+# Copyright (c) 2021 Hitachi Vantara, Inc. All rights reserved.
+# Author: Vaishali Aggarwal <vaishali.aggarwal@hitachivantara.com>
+#
+# v1.0
+#
+- name: demo - vvol_get
+  hosts: localhost
+  gather_facts: false
+  become: true
+  collections:
+    - hitachivantara.mfstorage_raidcom
+
+  tasks:
+    - name: vvol get
+      ldevget:
+        #connectivity
+        horcm_inst: "{{ horcm_inst }}" # Variable added
+        storage_serial: "{{ storage_serial }}" # Variable added
+        #properties
+        state: get
+        ldevtype: "{{ ldevtype }}" # Variable added
+        pool_id: "{{ pool_id | default('') }}" # Variable added
+      register: results
+
+    - name: Display the VVOL List for Pool ID # Restored original task
+      debug:
+        msg: "{{results}}"
+
+    - name: vvol get all
+      ldevget:
+        #connectivity
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        #properties
+        state: getall
+        ldevtype: "{{ ldevtype }}"
+      register: results
+
+    - name: Display the VVOL List for Pool ID
+      debug:
+        msg: "{{results}}"
+
+  # - name: Test basic raidcom execution # Removed test task
+  #   ansible.builtin.command:
+  #     cmd: "raidcom get resource -I{{ horcm_inst }} -s {{ storage_serial }}"
+  #   register: raidcom_test_result
+  #   ignore_errors: yes # Ignore errors for now just to see output
+
+  # - name: Display raidcom test result # Removed test task
+  #   debug:
+  #     var: raidcom_test_result

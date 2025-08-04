@@ -1,0 +1,200 @@
+---
+####################################################################
+# GALAHAD  Playbook
+####################################################################
+- name: GALAHAD Storage playbook
+  hosts: localhost
+  gather_facts: true
+
+  vars:
+    # storage_address: "172.23.67.34"
+    # vault_storage_username: "maintenance"
+    # vault_storage_secret: "raid-maintenance"
+    # hostgroupname_task5: "ansible_test"
+    # portId_task5: "CL1-E"
+    # hostmode_task5: "WINDOWS_EXTENSION"
+    # ldev_task5: "3105,61473"
+    # hostWwn_task5: ["10000a123456a123"]
+
+    # count_task1: 2
+    # parity_task1: "1-1"
+    # state: "present"
+    # ldevid_task1: 261
+    # capacity_task1: "20GB"
+
+    # parity_grp: "1-1"
+    # pool_name: "test"
+    # pool_type: "HDP"
+    # pool_capacity: "10GB"
+    # pool_warning_threshold_rate: 80
+    # pool_depletion_threshold_rate: 90
+
+    # Common connection info for all tasks
+    connection_info:
+      address: "{{ storage_address }}"
+      username: "{{ vault_storage_username }}"
+      password: "{{ vault_storage_secret }}"
+
+  tasks:
+    ####################################################################
+    # Task 1 : Create ldev - PVOL
+    ####################################################################
+    - name: Create ldev - PVOL
+      hitachivantara.vspone_block.vsp.hv_ldev:
+        connection_info: "{{ connection_info }}"
+        state: "{{ state }}"
+        spec:
+          ldev_id: "{{ item }}"
+          parity_group: "{{ parity_task1 }}"
+          size: "{{ capacity_task1 }}"
+      # with_sequence: start=1 end={{ count_task1 | int }}
+      with_sequence: start={{ ldevid_task1 | int }} end={{ ldevid_task1 | int + count_task1 | int - 1 }}
+      loop_control:
+        label: "Creating LDEV {{ ldevid_task1 }} of capacity {{ capacity_task1 }} for Parity {{ parity_task1 }}"
+      register: result
+      when: ldevid_task1 is defined and parity_task1 is defined and capacity_task1 is defined
+
+    - name: Debug the result variable
+      ansible.builtin.debug:
+        var: result
+
+    ######################################################################################
+    # Task 2 : Create a pvol and storage pool
+    # Currently there is no capability to assign a LDEV ID for your choice, it will be auto-assigned
+    ######################################################################################
+    - name: Create a storage pool and pvol (ldev)
+      hitachivantara.vspone_block.vsp.hv_storagepool:
+        connection_info: "{{ connection_info }}"
+        state: "{{state}}"
+        spec:
+          name: "{{ pool_name }}"
+          type: "{{ pool_type }}"
+          pool_volumes:
+            - parity_group_id: "{{ parity_grp }}"
+              capacity: "{{ pool_capacity }}"
+          warning_threshold_rate: "{{ pool_warning_threshold_rate }}"
+          depletion_threshold_rate: "{{ pool_depletion_threshold_rate }}"
+          # resource_group_id: 2
+          # should_enable_deduplication: false
+      with_sequence: start=1 end={{ count | int }}
+      loop_control:
+        label: "Creating LDEV for Parity {{ parity_grp }}"
+      register: result
+      when: parity_grp is defined
+
+    - name: Debug the result variable
+      ansible.builtin.debug:
+        var: result
+
+    ######################################################################################
+    # Task 3 : Expand pool by pool ID
+    ######################################################################################
+    - name: Expand pool by pool ID
+      hitachivantara.vspone_block.vsp.hv_storagepool:
+        connection_info: "{{ connection_info }}"
+        state: "{{ state }}"
+        spec:
+          id: "{{ pool_id_task3 }}"
+          pool_volumes:
+            - parity_group_id: "{{ parity_grp_task3 }}"
+              capacity: "{{ capacity_task3 }}"
+      with_sequence: start=1 end={{ count_task3 | int }}
+      loop_control:
+        label: "Adding LDEV in Parity Group {{ parity_grp_task3 }} of Capacity {{ capacity_task3 }}"
+      register: result
+      when: pool_id_task3 is defined and parity_grp_task3 is defined and capacity_task3 is defined
+
+    - name: Debug the result variable
+      ansible.builtin.debug:
+        var: result
+
+    ####################################################################
+    # Task 4 : Create ldev - VVOL
+    ####################################################################
+    - name: Create and Edit ldev - VVOL
+      hitachivantara.vspone_block.vsp.hv_ldev:
+        connection_info: "{{ connection_info }}"
+        state: "{{ state }}"
+        spec:
+          pool_id: "{{ poolid_task4 }}"
+          ldev_id: "{{ item }}"
+          name: "{{ ldev_name_task4 }}"
+          size: "{{ ldev_size_task4 }}"
+          # data_reduction_share: true             # should be true for a volume that will be used as PVOL for Thin Image Advanced pair
+      with_sequence: start={{ ldevid_task4 | int }} end={{ ldevid_task4 | int + count_task4 | int - 1 }}
+      loop_control:
+        label: "Creating VVOL {{ item }} {{ ldev_name_task4 }} of Capacity {{ ldev_size_task4 }}"
+      when: ldevid_task4 is defined and poolid_task4 is defined and ldev_size_task4 is defined
+      register: result
+
+    - name: Debug the result variable
+      ansible.builtin.debug:
+        var: result
+
+    #################################################################################
+    # Task 5 : Create hostgroup
+    # There is no capability to assign a hostGroupNumber, it will be auto-assigned
+    #################################################################################
+    - name: Create hostgroup
+      hitachivantara.vspone_block.vsp.hv_hg:
+        connection_info: "{{ connection_info }}"
+        state: "{{ state }}"
+        spec:
+          name: "{{ hostgroupname_task5 }}"
+          port: "{{ portId_task5 }}"
+          host_mode: "{{ hostmode_task5 }}"
+          # host_mode_options: [54, 63]
+          ldevs: "{{ item }}"
+          wwns: "{{ (hostWwn_task5 | length > 0) | ternary(hostWwn_task5, omit) }}"
+      loop: "{{ ldev_task5.split(',') | map('int') | list }}"
+      loop_control:
+        label: "Creating Host Group {{ hostgroupname_task5 }} on Port {{ portId_task5 }} with LDEVs {{ item }} and WWNs {{ hostWwn_task5 }}"
+      when: hostgroupname_task5 is defined
+      register: result
+
+    - name: Debug the result variable
+      ansible.builtin.debug:
+        var: result
+
+    ######################################################################################
+    # Task 6 : Create snapshot pair
+    ######################################################################################
+    - name: Create snapshot pair
+      hitachivantara.vspone_block.vsp.hv_snapshot:
+        connection_info: "{{ connection_info }}"
+        state: "{{ state }}"
+        spec:
+          primary_volume_id: "{{ ldevid_task6 }}"
+          secondary_volume_id: -1
+          pool_id: "{{ poolid_task6 }}"
+          snapshot_group_name: "{{ snapname_task6 }}"
+          mirror_unit_id: "{{ item }}"
+          can_cascade: "{{ cascade }}"
+          # is_data_reduction_force_copy: true         # For a Thin Image Advanced pair, value must be True
+      loop: "{{ mu_task6.split(',') | map('int') | list }}"
+      loop_control:
+        label: "Creating snapshot pair for LDEV {{ ldevid_task6 }} in Snapshot Group {{ snapname_task6 }} with MU number {{ item }}"
+      when: ldevid_task6 is defined and snapname_task6 is defined and mu_task6 is defined
+      register: result
+
+    - name: Debug the result variable
+      ansible.builtin.debug:
+        var: result
+
+    ######################################################################################
+    # Task 7 : Split snapshot pair
+    ######################################################################################
+    - name: Split snapshot pair
+      hitachivantara.vspone_block.vsp.hv_snapshot:
+        connection_info: "{{ connection_info }}"
+        state: "{{ state }}"
+        spec:
+          primary_volume_id: "{{ ldevid_task7 }}"
+          mirror_unit_id: "{{ mu_task7 }}"
+          snapshot_group_name: "{{ snapshotname_task7}}"
+      register: result
+      when: ldevid_task7 is defined and mu_task7 is defined and snapshotname_task7 is defined
+
+    - name: Debug the result variable
+      ansible.builtin.debug:
+        var: result

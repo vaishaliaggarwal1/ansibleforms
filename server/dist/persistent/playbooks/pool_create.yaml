@@ -1,0 +1,36 @@
+# Copyright (c) 2021 Hitachi Vantara, Inc. All rights reserved.
+# Author: Vaishali Aggarwal <vaishali.aggarwal@hitachivantara.com>
+# 
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+#
+# v1.0
+#
+- name: demo - mfpool_create
+  hosts: localhost
+  gather_facts: no
+  become: yes
+  collections:
+    - hitachivantara.mfstorage_raidcom
+
+  tasks:
+
+  - name: Create mainframe pool
+    pool:
+      #connectivity
+      horcm_inst: "{{ horcm_inst }}"
+      storage_serial: "{{ storage_serial }}"
+      #properties
+      state: add
+      pool_id: "{{ pool_id }}"
+      pool_name: "{{ pool_name }}"
+      ldev_id: [{{ ldev_id }}]
+      #Optional
+      # cnt: ""
+      # grp_opt: ""
+      # device_grp_name: ""
+      # user_threshold: ""
+    register: results
+
+  - name: Display the created Mainframe Pools
+    debug:
+      msg: "{{results}}" 

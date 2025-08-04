@@ -29,5 +29,3 @@ cp .env.example ./dist/.env.production
 cd dist
 pm2 start ecosystem.config.js --env production
 ```
-### Required Ansible version & plugins
-    - Ansible 2.10+ (with Jinja2 2.10+)

@@ -1,0 +1,37 @@
+# Copyright (c) 2021 Hitachi Vantara, Inc. All rights reserved.
+# Author: Vaishali Aggarwal <vaishali.aggarwal@hitachivantara.com>
+#
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+#
+# v1.0
+#
+- name: demo - mfpvol_create
+  hosts: localhost
+  gather_facts: false
+  become: true
+  collections:
+    - hitachivantara.mfstorage_raidcom
+
+  tasks:
+    - name: Create MF PVOLs
+      pvol:
+        #connectivity
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        #properties
+        state: present
+        parity_grp_id: "{{ parity_grp_id }}"
+        num_ldevs: "{{ num_ldevs }}"
+        ldev_prefix: "{{ ldev_prefix }}"
+        initial_hex: "{{ initial_hex }}"
+        base_ldev_name: "{{ base_ldev_name }}"
+        name_start: "{{ name_start }}"
+        cylinder: "{{ cylinder }}"
+        emulation: "{{ emulation }}"
+        mp_blade_id: "{{ mp_blade_id }}"
+        format_ldevs: "{{ format_ldevs }}"
+      register: results
+
+    - name: Display the created MF PVOLs
+      debug:
+        msg: "{{results}}"

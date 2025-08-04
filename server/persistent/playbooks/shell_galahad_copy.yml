@@ -1,0 +1,409 @@
+---
+####################################################################
+# GALAHAD  Playbook
+####################################################################
+- name: GALAHAD Storage playbook (Shell)
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    storage_address: "172.23.67.34"
+    storage_username: "maintenance"
+    storage_secret: "raid-maintenance"
+    storage_serial: "530642"
+    instance: "1"
+
+    # parity_task1: "1-1"
+    # ldev_task1: "442,443,444,445"
+    # emulation_task1: "OPEN-V"
+    # capacity_task1: "50g"
+    # mp_blade_id_task1: 0
+
+    ldev_id_task3: True
+    # ldev_name: "test"
+    # format_type: "qfmt"
+    pool_name_task3: "Ansible" 
+    ldev_range_task3: "61473-61475"
+    ldev_size_task3: "30g"
+    emulation_type_task3: "OPEN-V"
+    mp_blade_task3: 0
+
+    max_retries: 10
+    delay_seconds: 3
+    all_nml: false
+    ldev_sts_list: []
+    error_log_file: "/var/log/ansible/raidcom_errors.log"
+    cause_msg: "{{ item.stderr_lines | select('search', 'CAUSE') | list | first | default('Unknown error') }}"
+    
+    # Common connection info for all tasks
+    connection_info:
+      address: "{{ storage_address }}"
+      username: "{{ storage_username }}"
+      password: "{{ storage_secret }}"
+
+  tasks:
+    - name: Reset command status
+      shell: raidcom reset command_status
+      environment:
+        HORCMINST: "{{ instance }}"
+      changed_when: false
+
+    # ===================================================================================
+    # Task 1: Add LDEV (PVOL)
+    # ===================================================================================
+    - name: Task 1 - Add LDEV (PVOL)
+      block:
+        - name: Add LDEV (PVOL)
+          shell: >
+            raidcom add ldev -parity_grp_id {{ parity_task1 }}
+            -ldev_id {{ item }}
+            -emulation {{ emulation_task1 }}
+            -capacity {{ capacity_task1 }}
+            -mp_blade_id {{ mp_blade_id_task1 }}
+            -I{{ instance }}
+            -s {{ storage_serial }}
+          register: ldev
+          loop: "{{ ldev_task1.split(',') | map('string') }}"
+          loop_control:
+            label: "Creating LDEV {{ item }} on parity {{ parity_task1 }}"
+          when: ldev_task1 | length > 0
+
+        - name: Display successful LDEV creation
+          debug:
+            msg: "✅ OK: Successfully created LDEVs {{ ldev.results | map(attribute='item') | join(', ') }}."
+          when: ldev is succeeded
+      rescue:
+        - name: Extract and display failure cause
+          debug:
+            msg: "❌ FAILED: {{ item.item }} | CAUSE: {{ item.stderr | regex_search('CAUSE : .*') }}"
+          loop: "{{ ldev.results | selectattr('failed', 'equalto', true) }}"
+          loop_control:
+            label: "Displaying error for LDEV {{ item.item }}"
+
+        - name: Log full error details
+          lineinfile:
+            path: "{{ error_log_file }}"
+            line: "{{ lookup('pipe', 'date +\"%Y-%m-%d %H:%M:%S\"') }} - {{ item }}"
+            create: yes
+            mode: '0644'
+          loop: "{{ ldev.results | selectattr('failed', 'equalto', true) }}"
+          loop_control:
+            label: "Logging error for LDEV {{ item.item }}"
+        - fail:
+            msg: "Failed to create LDEVs. Halting execution."
+
+    - name: Wait for 1 seconds
+      pause:
+        seconds: 1
+
+    # ===================================================================================
+    # Task 2: Initialize LDEV
+    # ===================================================================================
+    - name: Task 2 - Initialize LDEV
+      block:
+        - name: Initialize LDEV
+          shell: raidcom initialize ldev -ldev_id {{ item }} -operation qfmt -I{{ instance }} -s {{ storage_serial }}
+          register: initialize_ldev_result
+          loop: "{{ ldev_task1.split(',') | map('string') }}"
+          loop_control:
+            label: "Initializing LDEV {{ item }}"
+          when: ldev_task1 is defined
+
+      #   - name: Display successful LDEV initialization
+      #     debug:
+      #       msg: "✅ OK: Successfully initialized LDEVs {{ initialize_ldev_result.results | map(attribute='item') | join(', ') }}."
+      #     when: initialize_ldev_result is succeeded
+      # rescue:
+      #   - name: Extract and display initialization failure cause
+      #     debug:
+      #       msg: "❌ FAILED: {{ item.item }} | CAUSE: {{ item.stderr | regex_search('CAUSE : .*') }}"
+      #     loop: "{{ initialize_ldev_result.results | selectattr('failed', 'equalto', true) }}"
+      #     loop_control:
+      #       label: "Displaying error for LDEV {{ item.item }}"
+
+        # - name: Log full initialization error details
+        #   lineinfile:
+        #     path: "{{ error_log_file }}"
+        #     line: "{{ lookup('pipe', 'date +\"%Y-%m-%d %H:%M:%S\"') }} - {{ item }}"
+        #     create: yes
+        #     mode: '0644'
+        #   loop: "{{ initialize_ldev_result.results | selectattr('failed', 'equalto', true) }}"
+        #   loop_control:
+        #     label: "Logging error for LDEV {{ item.item }}"
+        # - fail:
+        #     msg: "Failed to initialize LDEVs. Halting execution."
+
+    - name: Wait for 3 seconds
+      pause:
+        seconds: 3
+
+    # ===================================================================================
+    # Task 3: Wait for LDEV NML Status (Original logic preserved)
+    # ===================================================================================
+    - name: Wait for LDEVs to reach NML status with retries
+      shell: |
+        #!/bin/bash
+        ALL_NML_STATUS="false"
+        LDEV_STS_LIST=""
+        LDEV_IDS="{{ ldev_task1 }}"
+        ALL_LDEVS_NML=true
+        TEMP_LDEV_STS=()
+        IFS=',' read -ra ADDR <<< "$LDEV_IDS"
+        for ldev_id in "${ADDR[@]}"; do
+          RAIDCOM_OUTPUT=$(raidcom get ldev -ldev_id "${ldev_id}" -I{{ instance }} -s {{ storage_serial }} 2>&1)
+          CURRENT_STS=$(echo "$RAIDCOM_OUTPUT" | grep -oP 'STS\s*:\s*\K\w+')
+          TEMP_LDEV_STS+=("$CURRENT_STS")
+          if [[ "$CURRENT_STS" != "NML" ]]; then
+            ALL_LDEVS_NML=false
+            break
+          fi
+        done
+        if [[ "$ALL_LDEVS_NML" = true ]]; then
+          ALL_NML_STATUS="true"
+        fi
+        echo "ANSIBLE_ALL_NML_STATUS:$ALL_NML_STATUS"
+        echo "ANSIBLE_LDEV_STS_LIST:$(IFS=','; echo "${TEMP_LDEV_STS[*]}")"
+        exit 0
+      args: {}
+      register: ldev_poll_result
+      until: "ldev_poll_result.stdout.find('ANSIBLE_ALL_NML_STATUS:true') != -1"
+      retries: "{{ max_retries | int + 1 }}"
+      delay: "{{ delay_seconds | int }}"
+      changed_when: false
+      failed_when: false
+
+    - name: Set final all_nml and ldev_sts_list facts
+      set_fact:
+        all_nml: "{{ 'true' in ldev_poll_result.stdout | default('') }}"
+        ldev_sts_list: >-
+          {% set matched_list = ldev_poll_result.stdout | default('') | regex_search('ANSIBLE_LDEV_STS_LIST:(.*)', '\\1') %}
+          {% if matched_list %}
+            {{ matched_list[0].split(',') | list }}
+          {% else %}
+            []
+          {% endif %}
+      delegate_to: localhost
+      delegate_facts: true
+
+    - name: Final verification after LDEV status loop
+      debug:
+        msg: "All LDEVs are NML. Proceeding with subsequent tasks."
+      when: hostvars['localhost']['all_nml'] | default(False)
+
+    - name: Fail the playbook if LDEVs did not reach NML state after all retries
+      fail:
+        msg: "LDEVs failed to reach NML state after {{ max_retries }} retries. Final STS list: {{ hostvars['localhost']['ldev_sts_list'] | default('N/A') }}"
+      when: not hostvars['localhost']['all_nml'] | default(False)
+
+    # ===================================================================================
+    # Task 4: Add DP Pool
+    # ===================================================================================
+    - name: Task 4 - Add DP Pool
+      block:
+        - name: Add DP Pool
+          shell: raidcom add dp_pool -pool_name {{ pool_name_task2}} -ldev_id {{ ldev_task2 }} -user_threshold {{ threshold_1 }} {{threshold_2}} -I{{ instance }} -s {{ storage_serial }}
+          register: dp_pool_result
+          when: pool_name_task2 is defined and ldev_task2 is defined and all_nml
+
+        - name: Display the DP Pool
+          debug:
+            msg: "✅ OK: Successfully created DP Pool {{ pool_name_task2 }}."
+          when: dp_pool_result is succeeded and pool_name_task2 is defined
+      rescue:
+        - name: Display DP Pool creation failure cause
+          debug:
+            msg: "❌ FAILED: DP Pool {{ pool_name_task2 }} | CAUSE: {{ dp_pool_result.stderr | regex_search('CAUSE : .*') }}"
+          when: pool_name_task2 is defined
+        - name: Log DP Pool creation error
+          lineinfile:
+            path: "{{ error_log_file }}"
+            line: "{{ lookup('pipe', 'date +\"%Y-%m-%d %H:%M:%S\"') }} - {{ dp_pool_result }}"
+            create: yes
+            mode: '0644'
+          when: pool_name_task2 is defined
+        - fail:
+            msg: "Failed to create DP Pool. Halting execution."
+          when: pool_name_task2 is defined
+
+    # ===================================================================================
+    # Task 5: Add LDEV (VVOL)
+    # ===================================================================================
+    - name: Task 5 - Add LDEV (VVOL)
+      block:
+        - name: Add LDEV (VVOL - using ldev id)
+          shell: raidcom add ldev -pool {{ pool_name_task3 }} -ldev_id {{ item }} -capacity {{ ldev_size_task3 }} -emulation {{ emulation_type_task3 }} -mp_blade_id {{ mp_blade_task3 }} -I{{ instance }} -s {{ storage_serial }}
+          register: vvol_ldev
+          loop: "{{ ldev_id_task3.split(',') | map('int') | list }}"
+          loop_control:
+            label: "Initializing LDEV {{ item }} of capacity {{ ldev_size_task3 }}"
+          when: ldev_id_task3 is defined
+
+        - name: Display successful VVOL creation
+          debug:
+            msg: "✅ OK: Successfully created VVOLs {{ vvol_ldev.results | map(attribute='item') | join(', ') }}."
+          when: vvol_ldev is succeeded
+      rescue:
+        - name: Extract and display VVOL failure cause
+          debug:
+            msg: "❌ FAILED: {{ item.item }} | CAUSE: {{ item.stderr | regex_search('CAUSE : .*') }}"
+          loop: "{{ vvol_ldev.results | selectattr('failed', 'equalto', true) }}"
+          loop_control:
+            label: "Displaying error for VVOL {{ item.item }}"
+        - name: Log VVOL error details
+          lineinfile:
+            path: "{{ error_log_file }}"
+            line: "{{ lookup('pipe', 'date +\"%Y-%m-%d %H:%M:%S\"') }} - {{ item }}"
+            create: yes
+            mode: '0644'
+          loop: "{{ vvol_ldev.results | selectattr('failed', 'equalto', true) }}"
+          loop_control:
+            label: "Logging error for VVOL {{ item.item }}"
+        - fail:
+            msg: "Failed to create VVOLs. Halting execution."
+
+    # ===================================================================================
+    # Task 6: Hostgroup Management
+    # ===================================================================================
+    - name: Task 6 - Create Hostgroup
+      block:
+        - name: Create Hostgroup
+          shell: raidcom add host_grp -host_grp_name {{host_grp_name_task4}} -port {{port_task4}} -I{{instance}} -s {{storage_serial}}
+          register: host_group
+          when: host_grp_name_task4 is defined and port_task4 is defined
+
+        - name: Display the Hostgroup
+          debug:
+            msg: "✅ OK: Successfully created Hostgroup {{ host_grp_name_task4 }}."
+          when: host_group is succeeded
+      rescue:
+        - name: Display Hostgroup creation failure cause
+          debug:
+            msg: "❌ FAILED: Create Hostgroup {{ host_grp_name_task4 }} | CAUSE: {{ host_group.stderr | regex_search('CAUSE : .*') }}"
+        - name: Log Hostgroup creation error
+          lineinfile:
+            path: "{{ error_log_file }}"
+            line: "{{ lookup('pipe', 'date +\"%Y-%m-%d %H:%M:%S\"') }} - {{ host_group }}"
+            create: yes
+            mode: '0644'
+        - fail:
+            msg: "Failed to create Hostgroup. Halting execution."
+
+    - name: Task 7 - Modify Hostgroup
+      block:
+        - name: Modify host group
+          shell: raidcom modify host_grp -port {{port_task4}} {{host_grp_name_task4}} -host_mode {{host_mode_task4}} -I{{instance}} -s {{storage_serial}}
+          register: modify_host_group
+          when: host_mode_task4 is defined
+
+        - name: Display the modified Hostgroup
+          debug:
+            msg: "✅ OK: Successfully modified Hostgroup {{ host_grp_name_task4 }}."
+          when: modify_host_group is succeeded
+      rescue:
+        - name: Display Hostgroup modification failure
+          debug:
+            msg: "❌ FAILED: Modify Hostgroup {{ host_grp_name_task4 }} | CAUSE: {{ modify_host_group.stderr | regex_search('CAUSE : .*') }}"
+        - name: Log Hostgroup modification error
+          lineinfile:
+            path: "{{ error_log_file }}"
+            line: "{{ lookup('pipe', 'date +\"%Y-%m-%d %H:%M:%S\"') }} - {{ modify_host_group }}"
+            create: yes
+            mode: '0644'
+        - fail:
+            msg: "Failed to modify Hostgroup. Halting execution."
+
+    # ===================================================================================
+    # Task 8: LUN & WWN Management
+    # ===================================================================================
+    - name: Task 8 - Add LUN
+      block:
+        - name: Add LUN
+          shell: raidcom add lun -port {{port_task4}} {{host_grp_name_task4}} -ldev_id {{item}} -I{{instance}} -s {{storage_serial}}
+          loop: "{{ ldev_id_task4.split(',') | map('int') | list }}"
+          loop_control:
+            label: "Adding LDEV {{item}}"
+          register: lun_result
+          when: ldev_id_task4 is defined and host_grp_name_task4 is defined and port_task4 is defined
+
+        - name: Display the LUN result
+          debug:
+            msg: "✅ OK: Successfully added LUNs for LDEVs {{ ldev_id_task4 }}."
+          when: lun_result is succeeded
+      rescue:
+        - name: Extract and display LUN failure cause
+          debug:
+            msg: "❌ FAILED: {{ item.item }} | CAUSE: {{ item.stderr | regex_search('CAUSE : .*') }}"
+          loop: "{{ lun_result.results | selectattr('failed', 'equalto', true) }}"
+          loop_control:
+            label: "Displaying error for LUN {{ item.item }}"
+        - name: Log LUN error details
+          lineinfile:
+            path: "{{ error_log_file }}"
+            line: "{{ lookup('pipe', 'date +\"%Y-%m-%d %H:%M:%S\"') }} - {{ item }}"
+            create: yes
+            mode: '0644'
+          loop: "{{ lun_result.results | selectattr('failed', 'equalto', true) }}"
+          loop_control:
+            label: "Logging error for LUN {{ item.item }}"
+        - fail:
+            msg: "Failed to add LUNs. Halting execution."
+
+    - name: Task 9 - Add WWN
+      block:
+        - name: Add WWN
+          shell: raidcom add hba_wwn -port {{port_task4}} {{host_grp_name_task4}} -hba_wwn {{hba_wwn_task4}} -I{{instance}} -s {{storage_serial}}
+          register: wwn_result
+          when: port_task4 is defined and hba_wwn_task4 is defined
+
+        - name: Display the WWN result
+          debug:
+            msg: "✅ OK: Successfully added WWN {{ hba_wwn_task4 }}."
+          when: wwn_result is succeeded
+      rescue:
+        - name: Display WWN addition failure
+          debug:
+            msg: "❌ FAILED: Add WWN {{ hba_wwn_task4 }} | CAUSE: {{ wwn_result.stderr | regex_search('CAUSE : .*') }}"
+        - name: Log WWN addition error
+          lineinfile:
+            path: "{{ error_log_file }}"
+            line: "{{ lookup('pipe', 'date +\"%Y-%m-%d %H:%M:%S\"') }} - {{ wwn_result }}"
+            create: yes
+            mode: '0644'
+        - fail:
+            msg: "Failed to add WWN. Halting execution."
+
+    # ===================================================================================
+    # Task 10: Create Snapshot
+    # ===================================================================================
+    - name: Task 10 - Create Snapshot
+      block:
+        - name: Create snapshot pair
+          shell: raidcom add snapshot -ldev_id {{pvol_task5}} -pool {{pool_task5}} -snapshotgroup {{snapshotgroup_task5}} -mirror_id {{item}} -snap_mode {{snap_mode_task5}} -I{{ instance }} -s {{ storage_serial }}
+          register: snapshot_pair
+          loop: "{{ mirror_id_task5.split(',') | map('int') | list }}"
+          loop_control:
+            label: "Creating snapshot pair for LDEV {{ pvol_task5 }} in Snapshot Group {{ snapshotgroup_task5 }} with MU number {{ item }}"
+          when: pvol_task5 is defined and snapshotgroup_task5 is defined
+
+        - name: Display the snapshot pair result
+          debug:
+            msg: "✅ OK: Successfully created snapshots for PVOL {{ pvol_task5 }}."
+          when: snapshot_pair is succeeded
+      rescue:
+        - name: Extract and display snapshot failure cause
+          debug:
+            msg: "❌ FAILED: {{ item.item }} | CAUSE: {{ item.stderr | regex_search('CAUSE : .*') }}"
+          loop: "{{ snapshot_pair.results | selectattr('failed', 'equalto', true) }}"
+          loop_control:
+            label: "Displaying error for snapshot {{ item.item }}"
+        - name: Log snapshot error details
+          lineinfile:
+            path: "{{ error_log_file }}"
+            line: "{{ lookup('pipe', 'date +\"%Y-%m-%d %H:%M:%S\"') }} - {{ item }}"
+            create: yes
+            mode: '0644'
+          loop: "{{ snapshot_pair.results | selectattr('failed', 'equalto', true) }}"
+          loop_control:
+            label: "Logging error for snapshot {{ item.item }}"
+        - fail:
+            msg: "Failed to create snapshots. Halting execution."

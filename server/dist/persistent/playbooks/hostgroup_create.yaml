@@ -1,0 +1,32 @@
+# Copyright (c) 2023 Hitachi Vantara, Inc. All rights reserved.
+# Author: Claude Assistant
+# 
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+#
+# v1.0
+#
+- name: demo - hostgroup_create
+  hosts: localhost
+  gather_facts: no
+  become: yes
+  collections:
+    - hitachivantara.mfstorage_raidcom
+
+  tasks:
+
+  - name: Create host group
+    hitachivantara.mfstorage_raidcom.hostgroup:
+      #connectivity
+      horcm_inst: "{{ horcm_inst }}"
+      storage_serial: "{{ storage_serial }}"
+      #properties
+      state: present
+      port_id: "{{ port_id }}"
+      host_grp_number: "{{ host_grp_number }}"
+      host_grp_name: "{{ host_grp_name }}"
+      host_mode: "{{ host_mode }}"
+    register: results
+
+  - name: Display the created host group
+    debug:
+      msg: "{{results}}" 

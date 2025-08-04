@@ -1,0 +1,10 @@
+username: admin
+id: 1
+type: local
+groups:
+  - local/admins
+roles:
+  - admin
+  - public
+options: {}
+created: 2025-04-23 03:47:41

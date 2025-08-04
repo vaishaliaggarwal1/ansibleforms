@@ -1,0 +1,131 @@
+- name: External Storage Management
+  hosts: localhost
+  gather_facts: false
+  vars:
+    instance: "1"
+    user: "maintenance"
+    password: "raid-maintenance123"
+    storage_serial: "530642"
+    ldev_id: "3105"
+    # ldev_name: "test"
+    format_type: "qfmt"
+  tasks:
+    - name: Reset command status
+      shell: raidcom reset command_status
+      environment:
+        HORCMINST: "{{ instance }}"
+      changed_when: false
+
+    # Modify an existing LDEV by assigning it a SSID
+    - name: Modify LDEV by assigning it a SSID
+      shell: raidcom modify ldev -ldev_id {{ldev_id}} -ssid {{ssid}} -I{{ instance }} -s {{ storage_serial }}
+      environment:
+        HORCMINST: "{{ instance }}"
+      register: ldev
+      when: ssid is defined
+    - name: Display the LDEV
+      debug:
+        var: ldev
+    - name: Confirm ldev modification status
+      shell: raidcom get command_status
+      environment:
+        HORCMINST: "{{ instance }}"
+      # register: status_result
+      changed_when: false
+      when: ldev.changed == true
+    - name: Reset command status
+      shell: raidcom reset command_status
+      environment:
+        HORCMINST: "{{ instance }}"
+      changed_when: false
+      when: ldev.changed == true
+    
+    # Add an External Group if defined
+    - name: Add External Group
+      shell: raidcom add ldev -external_grp_id {{ external_group }}  -ldev_id {{ ldev_id }} -cylinder {{ cylinder }} -emulation {{ emulation }} -I{{ instance }} -s {{ storage_serial }}
+      register: external_grp
+      when: external_group is defined
+    - name: Display the External Group
+      debug:
+        var: external_grp
+    - name: Confirm addition of External Group status
+      environment:
+        HORCMINST: "{{ instance }}"
+      shell: raidcom get command_status
+      # register: status_result
+      changed_when: false
+      when: external_grp.changed == true
+    - name: Reset command status
+      environment:
+        HORCMINST: "{{ instance }}"
+      shell: raidcom reset command_status
+      changed_when: false
+      when: external_grp.changed == true
+    
+    # Assign LDEV name if defined
+    - name: Assign LDEV name
+      shell: raidcom modify ldev -ldev_id {{ ldev_id }} -ldev_name {{ ldev_name }} -I{{ instance }} -s {{ storage_serial }}
+      register: assign_ldev_name
+      when: ldev_name is defined
+    - name: Display the LDEV name
+      debug:
+        var: assign_ldev_name
+      when: assign_ldev_name.changed == true
+    - name: Confirm LDEV name assignment status
+      shell: raidcom get command_status
+      environment:
+        HORCMINST: "{{ instance }}"
+      # register: status_result
+      changed_when: false
+    # - name: Display command status
+    #   debug:
+    #     var: status_result
+    - name: Reset command status
+      shell: raidcom reset command_status
+      environment:
+        HORCMINST: "{{ instance }}"
+      changed_when: false
+      
+    # Initialize the LDEV
+    - name: Initialize the LDEV
+      environment:
+        HORCMINST: "{{ instance }}"
+      shell: raidcom initialize ldev -ldev_id {{ldev_id }} -operation {{ format_type }} -I{{ instance }} -s {{ storage_serial }}
+      register: initialize_ldev
+      when: format_type is defined
+    - name: Display the LDEV initialization status
+      debug:
+        var: initialize_ldev
+      when: initialize_ldev.changed == true
+    - name: Confirm LDEV initialization status
+      environment:
+        HORCMINST: "{{ instance }}"
+      shell: raidcom get command_status
+      # register: status_result
+      changed_when: false 
+      when: initialize_ldev.changed == true
+    - name: Reset command status
+      environment:
+        HORCMINST: "{{ instance }}"
+      shell: raidcom reset command_status
+      when: initialize_ldev.changed == true
+      changed_when: false
+
+  
+    # - name: Extract two LDEVs
+    #   set_fact:
+    #     # ldevs_to_delete: "{{ ldev_list.stdout_lines[:2] }}"   # Extract first 2 LDEV IDs
+    #     ldevs_to_delete: "{{ ldev_list.stdout_lines[-2:] }}"    # Extract last 2 LDEV IDs
+    # - name: Display the LDEV IDs to be deleted
+    #   debug:
+    #     msg: "{{ ldevs_to_delete }}"
+    # - name: Delete the first two LDEVs
+    #   shell: raidcom delete ldev -ldev_id {{ item }}
+    #   loop: "{{ ldevs_to_delete }}"
+    #   when: item is regex("^[0-9]+$")
+    #   register: delete_result
+    #   changed_when: delete_result.rc == 0
+    # - name: Display deleted LDEVs
+    #   debug:
+    #     msg: "Deleted LDEV: {{ item }}"
+    #   loop: "{{ ldevs_to_delete }}"

@@ -1,0 +1,50 @@
+# /root/ansibleforms/server/persistent/playbooks/check_ldev_status.yml
+---
+- name: Get LDEV status for each LDEV (inside loop)
+  shell: raidcom get ldev -ldev_id {{ item }} -I{{ instance }} -s {{ storage_serial }}
+  loop: "{{ ldev_task1.split(',') }}"
+  loop_control:
+    label: "Checking LDEV {{ item }}"
+  register: ldev_status_output
+  failed_when: false
+
+- name: Extract STS values into ldev_sts_list
+  set_fact:
+    ldev_sts_list: "{{ ldev_status_output.results |
+                        map(attribute='stdout_lines') |
+                        map('select', 'match', 'STS\\s*:\\s*\\w+') |
+                        map('first') |
+                        select('string') |
+                        map('regex_replace', '.*STS\\s*:\\s*(\\w+).*', '\\1') |
+                        map('trim') |
+                        list
+                     }}"
+  delegate_to: localhost
+  delegate_facts: true
+
+- name: Calculate all_nml based on ldev_sts_list
+  set_fact:
+    all_nml: "{{ ldev_sts_list | unique == ['NML'] }}"
+  delegate_to: localhost
+  delegate_facts: true
+
+- name: DEBUG - Current LDEV STS and all_nml status (inside check_ldev_status.yml loop)
+  debug:
+    msg: "Attempt {{ current_loop_index | default(0) }}: LDEV STS: {{ ldev_sts_list }}, All NML: {{ all_nml }}"
+
+# This is where the loop termination logic goes, after the status check
+# - name: End loop if all LDEVs are NML
+#   meta: end_loop
+#   when: all_nml
+
+- name: Fail if max retries reached and LDEVs are not NML
+  fail:
+    msg: "LDEVs failed to reach NML state after {{ max_retries }} retries. Final STS list: {{ ldev_sts_list | default('N/A') }}"
+  when: not all_nml and current_loop_index | int >= max_retries | int
+
+# - name: Pause before next retry
+#   pause:
+#     seconds: "{{ delay_seconds | int }}"
+#   when: 
+#     - not hostvars['localhost']['all_nml'] | default(False)
+#     - current_loop_index | int < max_retries | int # Don't pause on the last attempt

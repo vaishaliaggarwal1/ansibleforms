@@ -3,7 +3,8 @@ node_modules
 /dist
 
 # remove local persistent
-**/persistent/**
+**/persistent/logs/**
+**/persistent/forms_backups/**
 
 # local env files
 .env.development

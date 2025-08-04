@@ -1,0 +1,31 @@
+# Copyright (c) 2023 Hitachi Vantara, Inc. All rights reserved.
+# Author: Claude Assistant
+# 
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+#
+# v1.0
+#
+- name: demo - hostgroup_lun_create
+  hosts: localhost
+  gather_facts: no
+  become: yes
+  collections:
+    - hitachivantara.mfstorage_raidcom
+
+  tasks:
+
+  - name: Add LUN to host group
+    hostgroup_lun:
+      #connectivity
+      horcm_inst: 1
+      storage_serial: 530642
+      #properties
+      state: present
+      port_id: "CL1-E"
+      host_grp_number: 4
+      ldev_id: "3098"
+    register: results
+
+  - name: Display the created host group LUN
+    debug:
+      msg: "{{results}}" 
