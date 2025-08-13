@@ -1,0 +1,109 @@
+# Copyright (c) Hitachi Vantara Corporation 2025. All rights reserved
+# Author: Krishi Jain <krishi.jain@hitachivantara.com>
+#
+# Description:
+# Create physical volumes on the Hitachi Vantara storage arrays using ansible.
+#
+# Usage:
+# ansible-playbook openpvol_create.yaml
+#
+# Optionally: Save Facts in file located with playbook
+# ansible-playbook ./<playbook name>.yaml --extra-vars "{<vars>}" -e "<key>: <value>"
+# --forks <num> -v -M <module_path> <inventory>
+#
+
+- name: OPENPVOL-Create
+  hosts: localhost
+  vars:
+    ansible_python_interpreter: "/usr/bin/python3"
+    pvol_file: "openpvol_create.facts"
+    # Hardcoded values
+    storage_id: "{{storage_serial}}"
+    horcm_inst: "{{horcm_inst}}"
+    parity_grp_id: "{{parity_grp_id}}"
+    capacity: "{{capacity}}" # Use unit format for better clarity
+    start_ldev: "{{start_ldev}}"
+    end_ldev: "{{end_ldev}}"
+    emulation: "{{emulation}}" # Open systems volume emulation type
+    # Naming parameters
+    # base_name: "{{base_name}}"  # Base name for the volumes
+    # name_start: "{{name_start}}"         # Start numbering from 1
+    mp_blade_id: "{{mp_blade_id}}" # Default MP blade ID
+    format_ldevs: "{{format_ldevs}}" # Format LDEVs after creation
+  tasks:
+    - name: Display parameters to be used
+      debug:
+        msg:
+          - "Storage Serial: {{ storage_id }}"
+          - "HORCM Instance: {{ horcm_inst }}"
+          - "Parity Group: {{ parity_grp_id }}"
+          - "Capacity: {{ capacity }}"
+          - "LDEV Range: {{ start_ldev }}-{{ end_ldev }} ({{ end_ldev - start_ldev + 1 }} possible LDEVs)"
+          - "Emulation: {{ emulation }}"
+          # - "Base Name: {{ base_name }}"
+          # - "Name Start Index: {{ name_start }}"
+          - "MP Blade ID: {{ mp_blade_id }}"
+          - "Format LDEVs: {{ format_ldevs }}"
+
+    - name: Creating Open PVOLs with the addmultipleopenpvols function
+      hitachivantara.mfstorage_raidcom.openpvol:
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_id }}"
+        state: present
+        parity_grp_id: "{{ parity_grp_id }}"
+        capacity: "{{ capacity }}"
+        start_ldev: "{{ start_ldev }}"
+        end_ldev: "{{ end_ldev }}"
+        emulation: "{{ emulation }}"
+        # base_name: "{{ base_name }}"
+        # name_start: "{{ name_start }}"
+        mp_blade_id: "{{ mp_blade_id }}"
+        format_ldevs: "{{ format_ldevs }}"
+      register: create
+
+    - name: Debug output
+      debug:
+        var: create
+
+    # - name: Show created LDEVs
+    #   debug:
+    #     msg: "Created LDEV: {{ item.ldev_id }} (Name: {{ item.name }}, Status: {{ item.status }})"
+    #   loop: "{{ create.pvol_facts | default([]) }}"
+    #   when: create.pvol_facts is defined and create.pvol_facts | length > 0
+
+    # - name: Display format status summary
+    #   debug:
+    #     msg: |
+    #       Format status summary:
+    #       - Normal volumes: {{ create.format_status.normal_volumes }}
+    #       - Blocked volumes: {{ create.format_status.blocked_volumes }}
+    #       - Total volumes: {{ create.format_status.total_volumes }}
+    #       {% if create.format_status.note is defined %}
+    #       - {{ create.format_status.note }}
+    #       {% endif %}
+    #   when: create.format_status is defined
+
+    - name: Display warning for LDEVs in BLK status
+      debug:
+        msg: |
+          WARNING: Some LDEVs are in BLK (blocked) status due to ongoing formatting.
+          BLK status indicates that the quick format is still in progress.
+          Use the following command to check the status:
+          raidcom get ldev -ldev_id {{ item.ldev_id }} -I{{ horcm_inst }} -s {{ storage_id }}
+      loop: "{{ create.pvol_facts | default([]) }}"
+      when: create.pvol_facts is defined and item.status is defined and item.status == 'BLK'
+
+    - name: Provide information on formatting
+      debug:
+        msg: |
+          NOTE: The module now includes a polling mechanism that waits for formatting to complete.
+          If volumes still show as BLK status, the formatting may take longer than the allocated polling time.
+          Quick format operations run asynchronously on the storage array and will continue in the background.
+          Volumes will automatically transition to NML status when formatting completes.
+      when: format_ldevs|bool and create.format_status.blocked_volumes|int > 0
+
+    - name: Save created Open PVOL information
+      copy:
+        content: "{{ create | to_nice_json }}"
+        dest: "{{ pvol_file }}"
+      when: create is defined and create.changed

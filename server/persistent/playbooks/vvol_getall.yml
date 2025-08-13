@@ -1,0 +1,33 @@
+---
+# Copyright (c) Hitachi Vantara Corporation 2025. All rights reserved
+# Author: Vaishali Aggarwal <vaishali.aggarwal@hitachivantara.com>
+#
+# Abstract: Get all VVOLs
+#
+# Description:
+# Get the list of all VVOLs of specified LDEV type in the Hitachi Vantara Storage System.
+#
+# Usage:
+# ansible-playbook galahad.yml
+#
+- name: demo - vvol_get
+  hosts: localhost
+  gather_facts: false
+  become: true
+  collections:
+    - hitachivantara.mfstorage_raidcom
+
+  tasks:
+    - name: demo - vvol get
+      ldevget:
+        #connectivity
+        horcm_inst: "{{horcm_inst}}"
+        storage_serial: "{{storage_serial}}"
+        #properties
+        state: getall
+        ldevtype: "{{ldevtype}}"
+      register: results
+
+    - name: Display the VVOL List for Pool ID
+      debug:
+        msg: "{{results}}"

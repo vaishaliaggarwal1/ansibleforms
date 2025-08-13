@@ -1,0 +1,39 @@
+---
+# Copyright (c) Hitachi Vantara Corporation 2025. All rights reserved
+# Author: Krishi Jain <krishi.jain@hitachivantara.com>
+#
+# Abstract: Crate Snapshot
+#
+# Description:
+# Create a new Snapshot in the Hitachi Vantara Storage System.
+#
+# Usage:
+# ansible-playbook snapshot_create.yml
+#
+- name: demo - snapshot_create
+  hosts: localhost
+  gather_facts: false
+  become: true
+  collections:
+    - hitachivantara.mfstorage_raidcom
+
+  tasks:
+    - name: Create snapshot
+      snapshot:
+        #connectivity
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        #properties
+        state: present
+        pvol: "{{ pvol }}"
+        svol: "{{ svol | default(omit) }}"
+        pool_id: "{{ pool_id }}"
+        snapshot_group_name: "{{ snapshot_group_name }}"
+        # Optional
+        # mu_numbers: "{{ mu_numbers }}"
+        snap_mode: "normal"
+      register: results
+
+    - name: Display the created snapshot
+      debug:
+        msg: "{{results}}"

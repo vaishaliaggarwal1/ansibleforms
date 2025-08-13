@@ -1,0 +1,40 @@
+---
+# Copyright (c) Hitachi Vantara Corporation 2025. All rights reserved
+# Author: Vaishali Aggarwal <vaishali.aggarwal@hitachivantara.com>
+#
+# Abstract: Pool Create
+#
+# Description:
+# Create a new DP POOL in the Hitachi Vantara Storage System.
+#
+# Usage:
+# ansible-playbook pool_create.yml
+#
+- name: demo - dppool_create
+  hosts: localhost
+  gather_facts: false
+  become: true
+  collections:
+    - hitachivantara.mfstorage_raidcom
+
+  tasks:
+    - name: Create DP pool
+      pool:
+        #connectivity
+        horcm_inst: "{{horcm_inst}}"
+        storage_serial: "{{storage_serial}}"
+        #properties
+        state: present
+        pool_id: "{{pool_id}}"
+        pool_name: "{{pool_name}}"
+        ldev_id: "{{ldev_id}}"
+        #Optional
+        # cnt: "{{cnt}}"
+        # grp_opt: "{{grp_opt}}"
+        # device_grp_name: "{{device_grp_name}}"
+        user_threshold: "{{warning_threshold_rate}} {{depletion_threshold_rate}}"
+      register: results
+
+    - name: Display the created DP Pools
+      debug:
+        msg: "{{results}}"

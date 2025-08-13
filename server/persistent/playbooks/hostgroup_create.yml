@@ -1,0 +1,33 @@
+# Copyright (c) Hitachi Vantara Corporation 2025. All rights reserved
+# Author: Krishi Jain <krishi.jain@hitachivantara.com>
+#
+# Description:
+# Create HostGroup
+#
+# Usage:
+# ansible-playbook hostgroup_create.yml
+#
+- name: demo - hostgroup_create
+  hosts: localhost
+  gather_facts: false
+  become: true
+  collections:
+    - hitachivantara.mfstorage_raidcom
+
+  tasks:
+    - name: Create host group
+      hostgroup:
+        #connectivity
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        #properties
+        state: present
+        port_id: "{{ port_id }}"
+        host_grp_number: "{{ host_grp_number }}"
+        host_grp_name: "{{ host_grp_name }}"
+        host_mode: "{{ host_mode }}"
+      register: results
+
+    - name: Display the created host group
+      debug:
+        msg: "{{results}}"

@@ -1,0 +1,106 @@
+# Copyright (c) Hitachi Vantara Corporation 2025. All rights reserved
+# Author: Krishi Jain <krishi.jain@hitachivantara.com>
+#
+# Description:
+# Create V-VOLS on the Hitachi Vantara storage arrays using ansible.
+#
+# Usage:
+# ansible-playbook openvvol_create.yaml
+#
+# Optionally: Save Facts in file located with playbook
+# ansible-playbook ./<playbook name>.yaml --extra-vars "{<vars>}" -e "<key>: <value>"
+# --forks <num> -v -M <module_path> <inventory>
+#
+
+- name: OPENVVOL-Create
+  hosts: localhost
+  collections:
+    - hitachivantara.mfstorage_raidcom
+  vars:
+    ansible_python_interpreter: "/usr/bin/python3"
+    pvol_file: "openvvol_create.facts"
+    # Hardcoded values
+    storage_id: "{{storage_serial}}"
+    horcm_inst: "{{horcm_inst}}"
+    pool_id: "{{pool_id}}"
+    capacity: "{{capacity}}" # 1GB in blocks (2097152 * 512 bytes = 1GB)
+    start_ldev: "{{start_ldev}}"
+    end_ldev: "{{end_ldev}}" # Range of 6 potential LDEVs (3114-3119)
+    emulation: "{{emulation}}" # Open systems volume emulation type
+    # Naming parameters
+    base_name: "{{base_name}}" # Base name for the volumes
+    name_start: "{{name_start}}" # Start numbering from 1
+  tasks:
+    - name: Display parameters to be used
+      debug:
+        msg:
+          - "Storage Serial: {{ storage_id }}"
+          - "HORCM Instance: {{ horcm_inst }}"
+          - "Pool ID: {{ pool_id }}"
+          - "Capacity: {{ capacity }} block(s)"
+          - "LDEV Range: {{ start_ldev }}-{{ end_ldev }} ({{ end_ldev - start_ldev + 1 }} possible LDEVs)"
+          - "Emulation: {{ emulation }}"
+          - "Base Name: {{ base_name }}"
+          - "Name Start Index: {{ name_start }}"
+
+    - name: Creating Open VVOLs with the addmultipleopenvvols function
+      # hitachivantara.mfstorage_raidcom.openvvol:
+      openvvol:
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_id }}"
+        state: present
+        pool_id: "{{ pool_id }}"
+        capacity: "{{ capacity }}"
+        start_ldev: "{{ start_ldev }}"
+        end_ldev: "{{ end_ldev }}"
+        emulation: "{{ emulation }}"
+        base_name: "{{ base_name }}"
+        name_start: "{{ name_start }}"
+      register: create
+
+    - name: Debug output
+      debug:
+        var: create
+
+    - name: Show created LDEVs
+      debug:
+        msg: "Created LDEVs: {{ item.ldev_id }} (Name: {{ item.name }})"
+      loop: "{{ create.facts.created_ldevs | default([]) }}"
+      when: create.facts.created_ldevs is defined and create.facts.created_ldevs | length > 0
+
+    - name: Save created Open VVOL information
+      copy:
+        content: "{{ create | to_nice_json }}"
+        dest: "{{ pvol_file }}"
+      when: create is defined and create is changed
+
+    # # Create single Open VVOL using addldevnew function
+    # - name: Create single Open-V VVOL
+    #   hitachivantara.mfstorage_raidcom.openvvol:
+    #     horcm_inst: "{{ horcm_inst }}"
+    #     storage_serial: "{{ storage_id }}"
+    #     state: single
+    #     ldev_id: 61482
+    #     pool_id: 2
+    #     capacity: 2097152  # value could be in blks (1GB = 2097152 blocks) or "1g"
+    #     # Optional
+    #     # emulation: "{{ emulation }}"
+    #   register: single_vvol
+
+    # - name: Debug output for single Open VVOL
+    #   debug:
+    #     var: single_vvol
+
+    # # Modify Open VVOL using modifyldevname function
+    # - name: Modify Open VVOL name
+    #   hitachivantara.mfstorage_raidcom.openvvol:
+    #     horcm_inst: "{{ horcm_inst }}"
+    #     storage_serial: "{{ storage_id }}"
+    #     state: modify
+    #     ldev_id: 61482
+    #     ldev_name: "MODIFIED_VVOL"
+    #   register: modified_vvol
+
+    # - name: Debug output for modified Open VVOL
+    #   debug:
+    #     var: modified_vvol

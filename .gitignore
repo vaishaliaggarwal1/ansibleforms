@@ -22,7 +22,7 @@ pnpm-debug.log*
 .remote-sync.json
 
 # forms.yaml
-forms.yaml
+# forms.yaml
 *.personal
 
 # ontap stuff

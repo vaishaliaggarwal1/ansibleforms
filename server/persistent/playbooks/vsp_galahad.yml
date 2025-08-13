@@ -21,7 +21,7 @@
     # state: "present"
     # ldevid_task1: 261
     # capacity_task1: "20GB"
-
+    
     # parity_grp: "1-1"
     # pool_name: "test"
     # pool_type: "HDP"
@@ -53,6 +53,9 @@
         label: "Creating LDEV {{ ldevid_task1 }} of capacity {{ capacity_task1 }} for Parity {{ parity_task1 }}"
       register: result
       when: ldevid_task1 is defined and parity_task1 is defined and capacity_task1 is defined
+      # loop:
+        # - { ldevid: 512, parity: "1-4" }
+        # - { ldevid: 513, parity: "1-4" }
 
     - name: Debug the result variable
       ansible.builtin.debug:
@@ -151,7 +154,7 @@
         label: "Creating Host Group {{ hostgroupname_task5 }} on Port {{ portId_task5 }} with LDEVs {{ item }} and WWNs {{ hostWwn_task5 }}"
       when: hostgroupname_task5 is defined
       register: result
-
+ 
     - name: Debug the result variable
       ansible.builtin.debug:
         var: result

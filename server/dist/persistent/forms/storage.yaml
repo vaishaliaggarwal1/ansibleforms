@@ -1,0 +1,2772 @@
+- name: HiRAID - Test
+  showHelp: true
+  help: |
+    Create open Galahad components using HiRAID commands.
+  roles:
+    - admin
+  description: Create open Galahad components using HiRAID commands
+  categories:
+    - Storage
+  icon: hdd
+  playbook: hiraid_test.yml
+  tileClass: has-background-warning-light
+  type: ansible
+  fields:
+    - name: storage_serial
+      label: Storage Serial
+      type: enum
+      values:
+        - "530689"
+        - "530531"
+        - "530642"
+      required: true
+    - name: horcm_inst
+      label: HORCM Instance
+      type: number
+      required: true
+      placeholder: "1"
+    - name: add_pvol
+      label: Create PVOL's ?
+      type: checkbox
+      switch: true
+    - name: pvol_table
+      type: table
+      dependencies:
+        - name: add_pvol
+          values:
+            - true
+      allowInsert: true
+      allowDelete: true
+      tableFields:
+        - name: state_pvol
+          label: PVOL State
+          type: enum
+          values:
+            - present
+          default: present
+          required: true
+        - name: paritygrp_id_task1
+          label: Parity Group ID
+          type: enum
+          values:
+            - 1-1
+            - 1-4
+            - 1-5
+            - 1-6
+            - 1-7
+            - 1-8
+          required: true
+        - name: start_ldev_task1
+          label: Start LDEV
+          type: number
+          required: true
+          placeholder: "512"
+        - name: end_ldev_task1
+          label: End LDEV
+          type: number
+          required: true
+          placeholder: "519"
+        - name: capacity_task1
+          label: Capacity (blocks)
+          type: text
+          required: true
+          placeholder: "5280628736"
+        - name: emulation_task1
+          label: Emulation
+          type: enum
+          values:
+            - OPEN-V
+          required: true
+        - name: mp_blade_id_task1
+          label: MP Blade ID
+          type: number
+          required: false
+        - name: format_ldevs_task1
+          label: Format LDEVs after creation?
+          type: checkbox
+          switch: true
+    - name: create_pool
+      label: Create Galahad Pool?
+      type: checkbox
+      switch: true
+    - name: state_pool
+      label: State
+      type: enum
+      values:
+        - add
+      default: add
+      required: true
+      dependencies:
+        - name: create_pool
+          values:
+            - true
+    - name: pool_id_task2
+      label: Pool ID
+      type: number
+      required: true
+      line: pool
+      dependencies:
+        - name: create_pool
+          values:
+            - true
+    - name: pool_name_task2
+      label: Pool Name
+      type: text
+      line: pool
+      required: true
+      dependencies:
+        - name: create_pool
+          values:
+            - true
+    - name: ldev_id_task2
+      label: Enter list of LDEV IDs (comma-separated)
+      type: text
+      placeholder: 512,513,514,515
+      required: true
+      dependencies:
+        - name: create_pool
+          values:
+            - true
+    - name: count_task2
+      label: Pool Count
+      type: text
+      required: false
+      dependencies:
+        - name: create_pool
+          values:
+            - true
+    - name: warning_threshold_rate
+      label: Pool Warning Threshold
+      type: text
+      required: false
+      line: threshold
+      default: 80
+      placeholder: "80"
+      dependencies:
+        - name: create_pool
+          values:
+            - true
+    - name: depletion_threshold_rate
+      label: Pool Depletion Threshold
+      type: text
+      required: false
+      line: threshold
+      default: 90
+      placeholder: "90"
+      dependencies:
+        - name: create_pool
+          values:
+            - true
+    - name: create_vvols
+      label: Create multiple VVOLs?
+      type: checkbox
+      switch: true
+    - name: state_vvol
+      label: State
+      type: enum
+      values:
+        - present
+      default: present
+      required: true
+      dependencies:
+        - name: create_vvols
+          values:
+            - true
+    - name: pool_id_task3
+      label: VVOL Pool ID
+      type: number
+      required: true
+      dependencies:
+        - name: create_vvols
+          values:
+            - true
+    - name: start_ldev_task3
+      label: VVOL Start LDEV
+      type: number
+      line: ldev
+      required: true
+      placeholder: "61473"
+      dependencies:
+        - name: create_vvols
+          values:
+            - true
+    - name: end_ldev_task3
+      label: VVOL End LDEV
+      type: number
+      line: ldev
+      required: true
+      placeholder: "61478"
+      dependencies:
+        - name: create_vvols
+          values:
+            - true
+    - name: size_task3
+      label: VVOL Size
+      type: text
+      required: true
+      placeholder: "2097152"
+      dependencies:
+        - name: create_vvols
+          values:
+            - true
+    - name: emulation_task3
+      label: VVOL Emulation
+      type: enum
+      values:
+        - OPEN-V
+      required: true
+      dependencies:
+        - name: create_vvols
+          values:
+            - true
+    - name: vvol_table
+      type: table
+      dependencies:
+        - name: create_vvols
+          values:
+            - true
+      allowInsert: true
+      allowDelete: true
+      tableFields:
+        - name: pool_id_task3
+          label: VVOL Pool ID
+          type: number
+          required: true
+        - name: start_ldev_task3
+          label: VVOL Start LDEV
+          type: number
+          required: true
+          placeholder: "61473"
+        - name: end_ldev_task3
+          label: VVOL End LDEV
+          type: number
+          required: true
+          placeholder: "61478"
+        - name: size_task3
+          label: VVOL Size
+          type: text
+          required: true
+          placeholder: "2097152"
+        - name: emulation_task3
+          label: VVOL Emulation
+          type: enum
+          values:
+            - OPEN-V
+          required: true
+    - name: create_single_vvol
+      label: Create Single VVOL?
+      type: checkbox
+      switch: true
+    - name: state_single
+      label: State
+      type: enum
+      values:
+        - single
+      default: single
+      required: true
+      dependencies:
+        - name: create_single_vvol
+          values:
+            - true
+    - name: ldev_id_task4
+      label: LDEV ID
+      type: number
+      required: true
+      placeholder: "61479"
+      dependencies:
+        - name: create_single_vvol
+          values:
+            - true
+    - name: pool_id_task4
+      label: Pool ID
+      type: number
+      required: true
+      placeholder: "3"
+      dependencies:
+        - name: create_single_vvol
+          values:
+            - true
+    - name: capacity_task4
+      label: Volume Capacity
+      type: text
+      required: true
+      dependencies:
+        - name: create_single_vvol
+          values:
+            - true
+    - name: modify_vvol
+      label: Modify VVOL Name ?
+      type: checkbox
+      switch: true
+    - name: state_modify
+      label: State
+      type: enum
+      values:
+        - modify
+      default: modify
+      required: true
+      dependencies:
+        - name: modify_vvol
+          values:
+            - true
+    - name: ldev_id_task5
+      label: LDEV ID
+      type: text
+      line: modify_ldev
+      required: true
+      dependencies:
+        - name: modify_vvol
+          values:
+            - true
+    - name: ldev_name_task5
+      label: LDEV Name
+      type: text
+      required: true
+      line: modify_ldev
+      dependencies:
+        - name: modify_vvol
+          values:
+            - true
+    - name: modify_vvol_table
+      type: table
+      dependencies:
+        - name: modify_vvol
+          values:
+            - true
+      allowInsert: true
+      allowDelete: true
+      tableFields:
+        - name: ldev_id_task5
+          label: LDEV ID
+          type: text
+          required: true
+        - name: ldev_name_task5
+          label: LDEV Name
+          type: text
+          required: true
+    - name: create_hostgroups
+      label: Create Host Groups ?
+      type: checkbox
+      switch: true
+    - name: state_hostgroup
+      label: State
+      type: enum
+      values:
+        - present
+      default: present
+      required: true
+      dependencies:
+        - name: create_hostgroups
+          values:
+            - true
+    - name: portid_task6
+      label: Port ID
+      type: enum
+      values:
+        - CL1-E
+        - CL5-G
+        - CL8-F
+        - CL4-F
+        - CL1-G
+      required: true
+      dependencies:
+        - name: create_hostgroups
+          values:
+            - true
+    - name: host_group_number_task6
+      label: Host Group Number
+      type: number
+      required: true
+      dependencies:
+        - name: create_hostgroups
+          values:
+            - true
+    - name: host_group_name_task6
+      label: Host Group Name
+      type: text
+      required: true
+      dependencies:
+        - name: create_hostgroups
+          values:
+            - true
+    - name: host_mode_task6
+      label: Host Mode
+      type: enum
+      values:
+        - AIX
+        - LINUX
+        - VMWARE
+        - WIN
+        - WIN_EX
+      required: true
+      dependencies:
+        - name: create_hostgroups
+          values:
+            - true
+    - name: hostgroup_table
+      type: table
+      dependencies:
+        - name: create_hostgroups
+          values:
+            - true
+      allowInsert: true
+      allowDelete: true
+      tableFields:
+        - name: portid_task6
+          label: Port ID
+          type: enum
+          values:
+            - CL1-E
+            - CL5-G
+            - CL8-F
+            - CL4-F
+            - CL1-G
+          required: true
+        - name: host_group_number_task6
+          label: Host Group Number
+          type: number
+          required: true
+        - name: host_group_name_task6
+          label: Host Group Name
+          type: text
+          required: true
+        - name: host_mode_task6
+          label: Host Mode
+          type: enum
+          values:
+            - AIX
+            - LINUX
+            - VMWARE
+            - WIN
+            - WIN_EX
+          required: true
+    - name: create_hostgroup_luns
+      label: Add LUNs to Host Groups?
+      type: checkbox
+      switch: true
+    - name: state_lun
+      label: State
+      type: enum
+      values:
+        - present
+      default: present
+      required: true
+      dependencies:
+        - name: create_hostgroup_luns
+          values:
+            - true
+    - name: port_id_task7
+      label: LUN Port ID
+      type: enum
+      values:
+        - CL1-E
+        - CL5-G
+        - CL8-F
+        - CL4-F
+        - CL1-G
+      required: true
+      dependencies:
+        - name: create_hostgroup_luns
+          values:
+            - true
+    - name: host_grp_number_task7
+      label: LUN Host Group Number
+      type: number
+      required: true
+      dependencies:
+        - name: create_hostgroup_luns
+          values:
+            - true
+    - name: ldev_id_task7
+      help: >
+        If LDEV ID and LUN are passed as "2816,2817,2818" and "0,1,2"
+        respectively, then loop values will be "{ ldev_id: 2816, lun: 0 }", "{
+        ldev_id: 2817, lun: 1 }" and "{ ldev_id: 2818, lun: 2 }"
+      label: LUN LDEV ID
+      type: text
+      required: true
+      placeholder: 2816,2817,2818
+      dependencies:
+        - name: create_hostgroup_luns
+          values:
+            - true
+    - name: lun_id_task7
+      label: LUN ID
+      type: text
+      required: true
+      placeholder: 0,1,2
+      dependencies:
+        - name: create_hostgroup_luns
+          values:
+            - true
+    - name: hostgroup_lun_table
+      type: table
+      dependencies:
+        - name: create_hostgroup_luns
+          values:
+            - true
+      allowInsert: true
+      allowDelete: true
+      tableFields:
+        - name: port_id_task7
+          label: LUN Port ID
+          type: enum
+          values:
+            - CL1-E
+            - CL5-G
+            - CL8-F
+            - CL4-F
+            - CL1-G
+          required: true
+        - name: host_grp_number_task7
+          label: LUN Host Group Number
+          type: number
+          required: true
+        - name: ldev_id_task7
+          label: LUN LDEV ID
+          type: text
+          required: true
+          placeholder: 2816,2817,2818
+        - name: lun_id_task7
+          label: LUN ID
+          type: text
+          required: true
+          placeholder: 0,1,2
+    - name: create_hostgroup_wwns
+      label: Add WWNs to Host Groups?
+      type: checkbox
+      switch: true
+    - name: state_wwn
+      label: State
+      type: enum
+      values:
+        - present
+      default: present
+      required: true
+      dependencies:
+        - name: create_hostgroup_wwns
+          values:
+            - true
+    - name: port_id_task8
+      label: WWN Port ID
+      type: enum
+      values:
+        - CL1-E
+        - CL5-G
+        - CL8-F
+        - CL4-F
+        - CL1-G
+      required: true
+      dependencies:
+        - name: create_hostgroup_wwns
+          values:
+            - true
+    - name: host_grp_number_task8
+      label: WWN Host Group Number
+      type: number
+      required: true
+      dependencies:
+        - name: create_hostgroup_wwns
+          values:
+            - true
+    - name: hba_wwn_task8
+      label: HBA WWN
+      type: text
+      required: true
+      placeholder: 100000109bd185d2
+      dependencies:
+        - name: create_hostgroup_wwns
+          values:
+            - true
+    - name: hostgroup_wwn_table
+      type: table
+      dependencies:
+        - name: create_hostgroup_wwns
+          values:
+            - true
+      allowInsert: true
+      allowDelete: true
+      tableFields:
+        - name: port_id_task8
+          label: WWN Port ID
+          type: enum
+          values:
+            - CL1-E
+            - CL5-G
+            - CL8-F
+            - CL4-F
+            - CL1-G
+          required: true
+        - name: host_grp_number_task8
+          label: WWN Host Group Number
+          type: number
+          required: true
+        - name: hba_wwn_task8
+          label: HBA WWN
+          type: text
+          required: true
+          placeholder: 100000109bd185d2
+    - name: create_snapshots
+      label: Create Snapshots?
+      type: checkbox
+      switch: true
+    - name: state_snapshot
+      label: State
+      type: enum
+      values:
+        - present
+      default: present
+      required: true
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+    - name: poolid_task9
+      label: Snapshot Pool ID
+      type: number
+      required: true
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+    - name: ldevid_task9
+      label: Snapshot PVOL
+      type: number
+      required: true
+      line: snapshot_ldev
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+    - name: svol_task9
+      label: Snapshot SVOL
+      type: text
+      required: false
+      line: snapshot_ldev
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+    - name: snapshot_name_task9
+      label: Snapshot Name
+      type: text
+      required: true
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+    - name: mu_task6
+      label: Mirror Unit
+      type: number
+      required: true
+      placeholder: 3,4,5
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+    - name: snap_mode_task9
+      label: Snapshot Mode
+      type: text
+      required: false
+      default: normal
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+    - name: snapshot_table
+      type: table
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+      allowInsert: true
+      allowDelete: true
+      tableFields:
+        - name: ldevid_task9
+          label: Snapshot PVOL
+          type: number
+          required: true
+        - name: poolid_task9
+          label: Snapshot Pool ID
+          type: number
+          required: true
+        - name: snapshot_name_task9
+          label: Snapshot Name
+          type: text
+          required: true
+        - name: mu_start
+          label: MU Start
+          type: number
+          required: true
+          default: 3
+        - name: mu_end
+          label: MU End
+          type: number
+          required: true
+          default: 30
+        - name: snap_mode_task9
+          label: Snapshot Mode (override)
+          type: text
+          required: false
+        - name: svol_task9
+          label: Snapshot SVOL (cascade)
+          type: text
+          required: false
+  source: storage.yaml
+- name: External Storage (shell)
+  showHelp: true
+  help: |
+    Manage the External Storage
+  roles:
+    - admin
+  description: This helps manage External Storage
+  categories:
+    - Storage
+  type: ansible
+  playbook: external_storage.yml
+  tileClass: has-background-info-light
+  icon: bullseye
+  fields:
+    - name: storage_serial
+      label: Storage Serial
+      type: enum
+      values:
+        - "530689"
+        - "530531"
+        - "530642"
+      required: true
+    - name: instance
+      label: Raidcom Instance
+      type: number
+      required: true
+    - type: text
+      name: user
+      label: Username
+      required: true
+    - type: password
+      name: password
+      label: Password
+      required: true
+      noLog: true
+    - name: ldev_id
+      type: number
+      label: LDEV ID
+      required: true
+    - name: modify_ssid
+      label: Modify SSID?
+      type: checkbox
+    - name: ssid
+      type: text
+      label: SSID
+      required: true
+      dependencies:
+        - name: modify_ssid
+          values:
+            - true
+    - name: add_external_group
+      label: Add External Group ?
+      type: checkbox
+    - name: external_group
+      type: text
+      label: External Group ID
+      required: true
+      dependencies:
+        - name: add_external_group
+          values:
+            - true
+    - name: cylinder
+      type: number
+      label: Cylinder
+      required: true
+      dependencies:
+        - name: add_external_group
+          values:
+            - true
+    - name: emulation
+      type: text
+      label: Emulation
+      required: true
+      dependencies:
+        - name: add_external_group
+          values:
+            - true
+    - name: assign_ldevname
+      label: Assign LDEV Name ?
+      type: checkbox
+    - name: ldev_name
+      type: text
+      label: LDEV Name
+      required: true
+      dependencies:
+        - name: assign_ldevname
+          values:
+            - true
+    - name: format
+      label: Format ?
+      type: checkbox
+    - name: format_type
+      type: enum
+      values:
+        - qfmt
+        - fmt
+      label: Format Type
+      required: true
+      dependencies:
+        - name: format
+          values:
+            - true
+  source: storage.yaml
+- name: Galahad - HiRAID
+  showHelp: true
+  help: |
+    Create open Galahad components using HiRAID commands.
+  roles:
+    - admin
+  description: Create open Galahad components using HiRAID commands
+  categories:
+    - Storage
+  icon: hdd
+  playbook: hiraid_galahad.yml
+  type: ansible
+  fields:
+    - name: storage_serial
+      label: Storage Serial
+      type: enum
+      values:
+        - "530689"
+        - "530531"
+        - "530642"
+      required: true
+    - name: horcm_inst
+      label: HORCM Instance
+      type: number
+      required: true
+      placeholder: "1"
+    - name: add_pvol
+      label: Create PVOL's ?
+      type: checkbox
+      switch: true
+    - name: state_pvol
+      label: PVOL State
+      type: enum
+      values:
+        - present
+      default: present
+      required: true
+      dependencies:
+        - name: add_pvol
+          values:
+            - true
+    - name: paritygrp_id_task1
+      label: Parity Group ID
+      type: enum
+      values:
+        - 1-1
+        - 1-4
+        - 1-5
+        - 1-6
+        - 1-7
+        - 1-8
+      required: true
+      dependencies:
+        - name: add_pvol
+          values:
+            - true
+    - name: start_ldev_task1
+      label: Start LDEV
+      type: number
+      required: true
+      placeholder: "512"
+      line: ldevid
+      dependencies:
+        - name: add_pvol
+          values:
+            - true
+    - name: end_ldev_task1
+      label: End LDEV
+      type: number
+      required: true
+      placeholder: "519"
+      line: ldevid
+      dependencies:
+        - name: add_pvol
+          values:
+            - true
+    - name: capacity_task1
+      label: Capacity (blocks)
+      type: text
+      required: true
+      placeholder: "5280628736"
+      dependencies:
+        - name: add_pvol
+          values:
+            - true
+    - name: emulation_task1
+      label: Emulation
+      type: enum
+      values:
+        - OPEN-V
+      required: true
+      dependencies:
+        - name: add_pvol
+          values:
+            - true
+    - name: mp_blade_id_task1
+      label: MP Blade ID
+      type: number
+      required: false
+      line: pvol
+      width: is-two-thirds
+      dependencies:
+        - name: add_pvol
+          values:
+            - true
+    - name: format_ldevs_task1
+      label: Format LDEVs after creation?
+      type: checkbox
+      line: pvol
+      switch: true
+      dependencies:
+        - name: add_pvol
+          values:
+            - true
+    - name: create_pool
+      label: Create Galahad Pool?
+      type: checkbox
+      switch: true
+    - name: state_pool
+      label: State
+      type: enum
+      values:
+        - present
+      default: present
+      required: true
+      dependencies:
+        - name: create_pool
+          values:
+            - true
+    - name: pool_id_task2
+      label: Pool ID
+      type: number
+      required: true
+      line: pool
+      dependencies:
+        - name: create_pool
+          values:
+            - true
+    - name: pool_name_task2
+      label: Pool Name
+      type: text
+      line: pool
+      required: true
+      dependencies:
+        - name: create_pool
+          values:
+            - true
+    - name: ldev_id_task2
+      label: Enter list of LDEV IDs (space-separated)
+      type: text
+      placeholder: 512 513 514 515
+      required: true
+      dependencies:
+        - name: create_pool
+          values:
+            - true
+    - name: count_task2
+      label: Pool Count
+      type: text
+      required: false
+      dependencies:
+        - name: create_pool
+          values:
+            - true
+    - name: warning_threshold_rate
+      label: Pool Warning Threshold
+      type: text
+      required: false
+      line: threshold
+      default: 80
+      placeholder: "80"
+      dependencies:
+        - name: create_pool
+          values:
+            - true
+    - name: depletion_threshold_rate
+      label: Pool Depletion Threshold
+      type: text
+      required: false
+      line: threshold
+      default: 90
+      placeholder: "90"
+      dependencies:
+        - name: create_pool
+          values:
+            - true
+    - name: create_vvols
+      label: Create multiple VVOLs?
+      type: checkbox
+      switch: true
+    - name: state_vvol
+      label: State
+      type: enum
+      values:
+        - present
+      default: present
+      required: true
+      dependencies:
+        - name: create_vvols
+          values:
+            - true
+    - name: pool_id_task3
+      label: VVOL Pool ID
+      type: number
+      required: true
+      dependencies:
+        - name: create_vvols
+          values:
+            - true
+    - name: start_ldev_task3
+      label: VVOL Start LDEV
+      type: number
+      line: ldev
+      required: true
+      placeholder: "61473"
+      dependencies:
+        - name: create_vvols
+          values:
+            - true
+    - name: end_ldev_task3
+      label: VVOL End LDEV
+      type: number
+      line: ldev
+      required: true
+      placeholder: "61478"
+      dependencies:
+        - name: create_vvols
+          values:
+            - true
+    - name: size_task3
+      label: VVOL Size
+      type: text
+      required: true
+      placeholder: "2097152"
+      dependencies:
+        - name: create_vvols
+          values:
+            - true
+    - name: emulation_task3
+      label: VVOL Emulation
+      type: enum
+      values:
+        - OPEN-V
+      required: true
+      dependencies:
+        - name: create_vvols
+          values:
+            - true
+    - name: create_single_vvol
+      label: Create Single VVOL?
+      type: checkbox
+      switch: true
+    - name: state_single
+      label: State
+      type: enum
+      values:
+        - single
+      default: single
+      required: true
+      dependencies:
+        - name: create_single_vvol
+          values:
+            - true
+    - name: ldev_id_task4
+      label: LDEV ID
+      type: number
+      required: true
+      placeholder: "61479"
+      dependencies:
+        - name: create_single_vvol
+          values:
+            - true
+    - name: pool_id_task4
+      label: Pool ID
+      type: number
+      required: true
+      placeholder: "3"
+      dependencies:
+        - name: create_single_vvol
+          values:
+            - true
+    - name: capacity_task4
+      label: Volume Capacity
+      type: text
+      required: true
+      dependencies:
+        - name: create_single_vvol
+          values:
+            - true
+    - name: modify_vvol
+      label: Modify VVOL Name ?
+      type: checkbox
+      switch: true
+    - name: state_modify
+      label: State
+      type: enum
+      values:
+        - modify
+      default: modify
+      required: true
+      dependencies:
+        - name: modify_vvol
+          values:
+            - true
+    - name: ldev_id_task5
+      label: LDEV ID
+      type: text
+      line: modify_ldev
+      required: true
+      dependencies:
+        - name: modify_vvol
+          values:
+            - true
+    - name: ldev_name_task5
+      label: LDEV Name
+      type: text
+      required: true
+      line: modify_ldev
+      dependencies:
+        - name: modify_vvol
+          values:
+            - true
+    - name: create_hostgroups
+      label: Create Host Groups ?
+      type: checkbox
+      switch: true
+    - name: state_hostgroup
+      label: State
+      type: enum
+      values:
+        - present
+      default: present
+      required: true
+      dependencies:
+        - name: create_hostgroups
+          values:
+            - true
+    - name: portid_task6
+      label: Port ID
+      type: enum
+      values:
+        - CL1-E
+        - CL5-G
+        - CL8-F
+        - CL4-F
+        - CL1-G
+      required: true
+      dependencies:
+        - name: create_hostgroups
+          values:
+            - true
+    - name: host_group_number_task6
+      label: Host Group Number
+      type: number
+      required: true
+      dependencies:
+        - name: create_hostgroups
+          values:
+            - true
+    - name: host_group_name_task6
+      label: Host Group Name
+      type: text
+      required: true
+      dependencies:
+        - name: create_hostgroups
+          values:
+            - true
+    - name: host_mode_task6
+      label: Host Mode
+      type: enum
+      values:
+        - AIX
+        - LINUX
+        - VMWARE
+        - WIN
+        - WIN_EX
+      required: true
+      dependencies:
+        - name: create_hostgroups
+          values:
+            - true
+    - name: create_hostgroup_luns
+      label: Add LUNs to Host Groups?
+      type: checkbox
+      switch: true
+    - name: state_lun
+      label: State
+      type: enum
+      values:
+        - present
+      default: present
+      required: true
+      dependencies:
+        - name: create_hostgroup_luns
+          values:
+            - true
+    - name: port_id_task7
+      label: LUN Port ID
+      type: enum
+      values:
+        - CL1-E
+        - CL5-G
+        - CL8-F
+        - CL4-F
+        - CL1-G
+      required: true
+      dependencies:
+        - name: create_hostgroup_luns
+          values:
+            - true
+    - name: host_grp_number_task7
+      label: LUN Host Group Number
+      type: number
+      required: true
+      dependencies:
+        - name: create_hostgroup_luns
+          values:
+            - true
+    - name: ldev_id_task7
+      help: >
+        If LDEV ID and LUN are passed as "2816,2817,2818" and "0,1,2"
+        respectively, then loop values will be "{ ldev_id: 2816, lun: 0 }", "{
+        ldev_id: 2817, lun: 1 }" and "{ ldev_id: 2818, lun: 2 }"
+      label: LUN LDEV ID
+      type: text
+      required: true
+      placeholder: 2816,2817,2818
+      dependencies:
+        - name: create_hostgroup_luns
+          values:
+            - true
+    - name: lun_id_task7
+      label: LUN ID
+      type: text
+      required: true
+      placeholder: 0,1,2
+      dependencies:
+        - name: create_hostgroup_luns
+          values:
+            - true
+    - name: create_hostgroup_wwns
+      label: Add WWNs to Host Groups?
+      type: checkbox
+      switch: true
+    - name: state_wwn
+      label: State
+      type: enum
+      values:
+        - present
+      default: present
+      required: true
+      dependencies:
+        - name: create_hostgroup_wwns
+          values:
+            - true
+    - name: port_id_task8
+      label: WWN Port ID
+      type: enum
+      values:
+        - CL1-E
+        - CL5-G
+        - CL8-F
+        - CL4-F
+        - CL1-G
+      required: true
+      dependencies:
+        - name: create_hostgroup_wwns
+          values:
+            - true
+    - name: host_grp_number_task8
+      label: WWN Host Group Number
+      type: number
+      required: true
+      dependencies:
+        - name: create_hostgroup_wwns
+          values:
+            - true
+    - name: hba_wwn_task8
+      label: HBA WWN
+      type: text
+      required: true
+      placeholder: 100000109bd185d2
+      dependencies:
+        - name: create_hostgroup_wwns
+          values:
+            - true
+    - name: create_snapshots
+      label: Create Snapshots?
+      type: checkbox
+      switch: true
+    - name: state_snapshot
+      label: State
+      type: enum
+      values:
+        - present
+      default: present
+      required: true
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+    - name: poolid_task9
+      label: Snapshot Pool ID
+      type: number
+      required: true
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+    - name: ldevid_task9
+      label: Snapshot PVOL
+      type: number
+      required: true
+      line: snapshot_ldev
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+    - name: svol_task9
+      label: Snapshot SVOL
+      type: text
+      required: false
+      line: snapshot_ldev
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+    - name: snapshot_name_task9
+      label: Snapshot Name
+      type: text
+      required: true
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+    - name: mu_task6
+      label: Mirror Unit
+      type: number
+      required: true
+      placeholder: 3,4,5
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+    - name: snap_mode_task9
+      label: Snapshot Mode
+      type: text
+      required: false
+      default: normal
+      dependencies:
+        - name: create_snapshots
+          values:
+            - true
+  source: storage.yaml
+- name: Galahad - Shell
+  showHelp: true
+  help: |
+    Retrieves a list of Virtual Volumes based on criteria using VSP Direct.
+  roles:
+    - admin
+  description: Retrieves a list of Virtual Volumes based on criteria using VSP Direct
+  categories:
+    - Storage
+  icon: hdd
+  type: ansible
+  playbook: shell_galahad.yml
+  tileClass: has-background-info-light
+  fields:
+    - name: storage_serial
+      label: Storage Serial
+      type: enum
+      values:
+        - "530689"
+        - "530531"
+        - "530642"
+      required: true
+    - name: instance
+      label: Raidcom Instance
+      type: number
+      required: true
+    - name: storage_username
+      label: Username
+      type: text
+      required: true
+    - name: storage_secret
+      label: Password
+      type: password
+      required: true
+      noLog: true
+    - name: create_pvol
+      label: Create LDEV (PVOL) ?
+      type: checkbox
+      switch: true
+    - name: parity_task1
+      label: Parity
+      type: enum
+      values:
+        - 1-1
+        - 1-4
+        - 1-5
+        - 1-6
+        - 1-7
+        - 1-8
+      required: true
+      dependencies:
+        - name: create_pvol
+          values:
+            - true
+    - name: ldev_task1
+      label: LDEV ID
+      type: text
+      placeholder: 0x12c-305
+      required: true
+      dependencies:
+        - name: create_pvol
+          values:
+            - true
+    - name: capacity_task1
+      label: Capacity (in GB)
+      type: text
+      required: true
+      placeholder: 2518G / 2048k
+      dependencies:
+        - name: create_pvol
+          values:
+            - true
+    - name: emulation_task1
+      label: Emulation type
+      type: enum
+      values:
+        - OPEN-V
+      required: true
+      dependencies:
+        - name: create_pvol
+          values:
+            - true
+    - name: mp_blade_id_task1
+      label: MP Blade ID
+      type: text
+      required: true
+      dependencies:
+        - name: create_pvol
+          values:
+            - true
+    - name: add_pool
+      label: Add Pool ?
+      type: checkbox
+      switch: true
+    - name: pool_name_task2
+      label: Pool Name
+      type: text
+      required: true
+      dependencies:
+        - name: add_pool
+          values:
+            - true
+    - name: ldev_task2
+      label: LDEV ID
+      type: text
+      required: true
+      placeholder: 100 / 100 - 110
+      dependencies:
+        - name: add_pool
+          values:
+            - true
+    - name: threshold_1
+      label: Pool Warning Threshold Rate
+      type: number
+      required: false
+      default: 80
+      dependencies:
+        - name: add_pool
+          values:
+            - true
+    - name: threshold_2
+      label: Pool Depletion Threshold Rate
+      type: number
+      required: false
+      default: 90
+      dependencies:
+        - name: add_pool
+          values:
+            - true
+    - name: create_ldev
+      label: Create LDEV (VVOL) ?
+      type: checkbox
+      switch: true
+    - name: ldev_id_task3
+      label: LDEV ID
+      type: text
+      required: true
+      placeholder: 61473,61474,61475
+      dependencies:
+        - name: create_ldev
+          values:
+            - true
+    - name: pool_name_task3
+      label: POOL Name
+      type: text
+      required: true
+      dependencies:
+        - name: create_ldev
+          values:
+            - true
+    - name: ldev_size_task3
+      label: LDEV Capacity
+      type: text
+      required: true
+      placeholder: 2048GB
+      dependencies:
+        - name: create_ldev
+          values:
+            - true
+    - name: emulation_type_task3
+      label: Emulation type
+      type: enum
+      values:
+        - OPEN-V
+      required: true
+      dependencies:
+        - name: create_ldev
+          values:
+            - true
+    - name: mp_blade_task3
+      label: MP Blade ID
+      type: text
+      required: true
+      dependencies:
+        - name: create_ldev
+          values:
+            - true
+    - name: format_ldev
+      label: Format LDEV ?
+      type: checkbox
+      switch: true
+      dependencies:
+        - name: create_ldev
+          values:
+            - true
+    - name: format_type_task3
+      label: Format Type
+      type: enum
+      values:
+        - fmt
+        - qfmt
+      required: true
+      dependencies:
+        - name: create_ldev
+          values:
+            - true
+        - name: format_ldev
+          values:
+            - true
+    - name: create_hostgroup
+      label: Create HostGroup ?
+      type: checkbox
+      switch: true
+    - name: host_grp_name_task4
+      label: HostGroup Name
+      type: text
+      required: true
+      dependencies:
+        - name: create_hostgroup
+          values:
+            - true
+    - name: port_task4
+      label: Port Number
+      type: enum
+      values:
+        - CL1-E
+        - CL4-F
+        - CL8-F
+        - CL1-G
+        - CL5-G
+      required: true
+      dependencies:
+        - name: create_hostgroup
+          values:
+            - true
+    - name: host_mode_task4
+      label: Host Mode
+      type: enum
+      values:
+        - WIN_EX
+        - LINUX
+        - VMWARE
+        - WIN
+        - AIX
+      required: true
+      dependencies:
+        - name: create_hostgroup
+          values:
+            - true
+    - name: ldev_id_task4
+      label: Enter list of LDEV IDs (comma-separated)
+      type: text
+      placeholder: 3104,2817,3091
+      required: true
+      dependencies:
+        - name: create_hostgroup
+          values:
+            - true
+    - name: hba_wwn_task4
+      label: Host WWN
+      type: text
+      required: false
+      placeholder: 10000a123456a123
+      dependencies:
+        - name: create_hostgroup
+          values:
+            - true
+    - name: create_snapshot
+      label: Create Snapshot Pair?
+      type: checkbox
+      switch: true
+    - name: pvol_task5
+      label: LDEV ID
+      type: number
+      required: true
+      dependencies:
+        - name: create_snapshot
+          values:
+            - true
+    - name: pool_task5
+      label: POOL ID
+      type: number
+      required: true
+      dependencies:
+        - name: create_snapshot
+          values:
+            - true
+    - name: snapshotgroup_task5
+      label: Snapshot Name
+      type: text
+      required: true
+      dependencies:
+        - name: create_snapshot
+          values:
+            - true
+    - name: mirror_id_task5
+      label: Mirror Unit Number
+      type: text
+      required: false
+      dependencies:
+        - name: create_snapshot
+          values:
+            - true
+    - name: snap_mode_task5
+      label: Snap Mode
+      type: enum
+      values:
+        - cascade
+        - CTG
+        - clone
+      required: false
+      dependencies:
+        - name: create_snapshot
+          values:
+            - true
+  source: storage.yaml
+- name: Host Group - Add LUN
+  showHelp: true
+  help: |
+    Adds a LUN (LDEV) to a specified host group.
+  roles:
+    - admin
+  description: Adds a LUN (LDEV) to a specified host group
+  categories:
+    - Storage
+  icon: link
+  playbook: hostgroup_lun_create.yml
+  type: ansible
+  fields:
+    - type: number
+      name: horcm_inst
+      label: HORCM Instance
+      required: true
+      placeholder: "1"
+    - type: enum
+      name: storage_serial
+      label: Storage Serial Number
+      required: true
+      values:
+        - "530689"
+        - "530642"
+        - "530531"
+    - type: text
+      name: port_id
+      label: Port ID
+      required: true
+      placeholder: CL1-E
+    - type: number
+      name: host_grp_number
+      label: Host Group Number
+      required: true
+      placeholder: "4"
+    - type: text
+      name: ldev_id
+      label: LDEV ID
+      required: true
+      placeholder: "3098"
+  source: storage.yaml
+- name: Host Group - Add WWN
+  showHelp: true
+  help: |
+    Adds a WWN (World Wide Name) to a specified host group.
+  roles:
+    - admin
+  description: Adds a WWN to a specified host group
+  categories:
+    - Storage
+  icon: plug
+  playbook: hostgroup_wwn_create.yml
+  type: ansible
+  fields:
+    - type: number
+      name: horcm_inst
+      label: HORCM Instance
+      required: true
+      placeholder: "1"
+    - type: enum
+      name: storage_serial
+      label: Storage Serial Number
+      required: true
+      values:
+        - "530689"
+        - "530642"
+        - "530531"
+    - type: text
+      name: port_id
+      label: Port ID
+      required: true
+      placeholder: CL1-E
+    - type: number
+      name: host_grp_number
+      label: Host Group Number
+      required: true
+      placeholder: "4"
+    - type: text
+      name: hba_wwn
+      label: HBA WWN
+      required: true
+      placeholder: 100000123456789d
+    - type: text
+      name: wwn_nickname
+      label: WWN Nickname
+      required: true
+      placeholder: server1_hba1
+  source: storage.yaml
+- name: Host Group - Create
+  showHelp: true
+  help: |
+    Creates a new host group on a specified port.
+  roles:
+    - admin
+  description: Creates a new host group on a specified port
+  categories:
+    - Storage
+  icon: plug
+  playbook: hostgroup_create.yml
+  type: ansible
+  fields:
+    - type: number
+      name: horcm_inst
+      label: HORCM Instance
+      required: true
+      placeholder: "1"
+    - type: enum
+      name: storage_serial
+      label: Storage Serial Number
+      required: true
+      values:
+        - "530689"
+        - "530642"
+        - "530531"
+    - type: text
+      name: port_id
+      label: Port ID
+      required: true
+      placeholder: CL1-E
+    - type: number
+      name: host_grp_number
+      label: Host Group Number
+      required: true
+      placeholder: "4"
+    - type: text
+      name: host_grp_name
+      label: Host Group Name
+      required: true
+      placeholder: extstor_30642_to_30689-Ansible
+    - type: text
+      name: host_mode
+      label: Host Mode
+      required: true
+      placeholder: WIN_EX
+  source: storage.yaml
+- name: Mainframe PVOL - Create
+  showHelp: true
+  help: |
+    Creates one or more Mainframe Physical Volumes (PVOLs).
+  roles:
+    - admin
+  description: Creates one or more Mainframe Physical Volumes
+  categories:
+    - Storage
+  icon: hdd
+  playbook: mf_pvol_create.yml
+  type: ansible
+  fields:
+    - type: number
+      name: horcm_inst
+      label: HORCM Instance
+      required: true
+      placeholder: "0"
+    - type: enum
+      name: storage_serial
+      label: Storage Serial Number
+      required: true
+      values:
+        - "530689"
+        - "530642"
+        - "530531"
+    - type: text
+      name: parity_grp_id
+      label: Parity Group ID
+      required: true
+      placeholder: 1-1
+    - type: number
+      name: num_ldevs
+      label: Number of LDEVs
+      required: true
+      default: 1
+    - type: text
+      name: ldev_prefix
+      label: LDEV Prefix
+      required: true
+      placeholder: "00:F0:"
+    - type: text
+      name: initial_hex
+      label: Initial Hex Value
+      required: true
+      placeholder: 3F
+    - type: text
+      name: base_ldev_name
+      label: Base LDEV Name
+      required: true
+      placeholder: VK_PVOL_
+    - type: number
+      name: name_start
+      label: LDEV Name Start Number
+      required: true
+      placeholder: "4"
+    - type: number
+      name: cylinder
+      label: Size (Cylinders)
+      required: true
+      placeholder: "15000"
+    - type: enum
+      name: emulation
+      label: Emulation Type
+      required: true
+      values:
+        - 3390-V
+      placeholder: 3390-V
+    - type: text
+      name: mp_blade_id
+      label: MP Blade ID
+      required: true
+      placeholder: "0"
+    - type: checkbox
+      name: format_ldevs
+      label: Format LDEVs
+      default: true
+  source: storage.yaml
+- name: Mainframe VVOL - Create
+  showHelp: true
+  help: |
+    Creates one or more Mainframe Virtual Volumes.
+  roles:
+    - admin
+  description: Creates one or more Mainframe Virtual Volumes
+  categories:
+    - Storage
+  icon: hdd
+  playbook: mf_vvol_create.yml
+  type: ansible
+  fields:
+    - type: number
+      name: horcm_inst
+      label: HORCM Instance
+      required: true
+      placeholder: "0"
+    - type: enum
+      name: storage_serial
+      label: Storage Serial Number
+      required: true
+      values:
+        - "530689"
+        - "530642"
+        - "530531"
+    - type: text
+      name: pool_name
+      label: Pool Name/ID
+      required: true
+      placeholder: "5"
+    - type: number
+      name: num_ldevs
+      label: Number of LDEVs
+      required: true
+      default: 1
+    - type: text
+      name: ldev_prefix
+      label: LDEV Prefix
+      required: true
+      placeholder: "00:10:"
+    - type: text
+      name: initial_hex
+      label: Initial Hex Value
+      required: true
+      placeholder: 0F
+    - type: text
+      name: base_ldev_name
+      label: Base LDEV Name
+      required: true
+      placeholder: VK_Test_LDEV_
+    - type: number
+      name: name_start
+      label: LDEV Name Start Number
+      required: true
+      placeholder: "15"
+    - type: number
+      name: cylinder
+      label: Size (Cylinders)
+      required: true
+      placeholder: "10"
+    - type: enum
+      name: emulation
+      label: Emulation Type
+      required: true
+      values:
+        - 3390-A
+  source: storage.yaml
+- name: Open PVOL - Create
+  showHelp: true
+  help: |
+    Create physical volumes on the Hitachi Vantara storage arrays using ansible.
+  roles:
+    - admin
+  description: Create physical volumes on the Hitachi Vantara Open system storage arrays
+  categories:
+    - Storage
+  icon: hdd
+  playbook: openpvol_create.yml
+  type: ansible
+  fields:
+    - type: number
+      name: horcm_inst
+      label: HORCM Instance
+      required: true
+      placeholder: "0"
+    - type: enum
+      name: storage_serial
+      label: Storage Serial Number
+      required: true
+      values:
+        - "530689"
+        - "530642"
+        - "530531"
+    - name: parity_grp_id
+      label: Parity Group ID
+      type: enum
+      values:
+        - 1-1
+        - 1-4
+        - 1-5
+        - 1-6
+        - 1-7
+        - 1-8
+      required: true
+    - name: capacity
+      label: Capacity (in g/GB)
+      type: text
+      required: true
+      placeholder: 20g OR 20GB
+    - name: start_ldev
+      label: Start LDEV ID (Decimal value)
+      type: number
+      required: true
+      placeholder: "1010"
+    - name: end_ldev
+      label: End LDEV ID (Decimal value)
+      type: number
+      required: true
+      placeholder: "1010"
+    - name: emulation
+      label: Emulation
+      type: enum
+      required: true
+      values:
+        - OPEN-V
+    - name: base_name
+      label: Base Name
+      type: text
+      required: true
+      placeholder: Test
+    - name: name_start
+      label: Name Start
+      type: number
+      required: true
+      placeholder: "1"
+      default: 1
+    - name: mp_blade_id
+      label: MP Blade ID
+      type: number
+      required: true
+      placeholder: "1"
+    - type: checkbox
+      name: format_ldevs
+      label: Format LDEVs
+      default: true
+  source: storage.yaml
+- name: Open VVOL - Create
+  showHelp: true
+  help: |
+    Create Virtual volumes on the Hitachi Vantara storage arrays using ansible.
+  roles:
+    - admin
+  description: Create VVOLs on the Hitachi Vantara Open system storage arrays
+  categories:
+    - Storage
+  icon: hdd
+  playbook: openvvol_create.yml
+  type: ansible
+  fields:
+    - type: number
+      name: horcm_inst
+      label: HORCM Instance
+      required: true
+      placeholder: "0"
+    - type: enum
+      name: storage_serial
+      label: Storage Serial Number
+      required: true
+      values:
+        - "530689"
+        - "530642"
+        - "530531"
+    - name: pool_id
+      label: Pool ID
+      type: number
+      required: true
+      placeholder: "2"
+    - name: capacity
+      label: Capacity (in blocks)
+      type: text
+      required: true
+      placeholder: "2097152"
+    - name: start_ldev
+      label: Start LDEV ID (Decimal value)
+      type: number
+      required: true
+      placeholder: "1010"
+    - name: end_ldev
+      label: End LDEV ID (Decimal value)
+      type: number
+      required: true
+      placeholder: "1010"
+    - name: emulation
+      label: Emulation
+      type: enum
+      required: true
+      values:
+        - OPEN-V
+    - name: base_name
+      label: Base Name
+      type: text
+      required: true
+      placeholder: Test
+    - name: name_start
+      label: Name Start
+      type: number
+      required: true
+      placeholder: "1"
+      default: 1
+  source: storage.yaml
+- name: POOL - Create
+  showHelp: true
+  help: |
+    Creates a new mainframe storage pool.
+  roles:
+    - admin
+  description: Creates a new mainframe storage pool
+  categories:
+    - Storage
+  icon: plus-square
+  playbook: pool_create.yml
+  type: ansible
+  fields:
+    - type: number
+      name: horcm_inst
+      label: HORCM Instance
+      required: true
+      placeholder: "0"
+    - type: enum
+      name: storage_serial
+      label: Storage Serial Number
+      required: true
+      values:
+        - "530689"
+        - "530642"
+        - "530531"
+    - type: number
+      name: pool_id
+      label: Pool ID
+      required: true
+      placeholder: "6"
+    - type: text
+      name: pool_name
+      label: Pool Name
+      required: true
+      placeholder: Pool Name
+    - type: text
+      name: ldev_id
+      label: LDEV IDs (comma separated)
+      required: true
+      placeholder: "61503"
+    - name: warning_threshold_rate
+      label: Pool Warning Threshold
+      type: text
+      required: false
+      line: threshold
+      default: 80
+      placeholder: "80"
+    - name: depletion_threshold_rate
+      label: Pool Depletion Threshold
+      type: text
+      required: false
+      line: threshold
+      default: 90
+    - name: cnt
+      label: Count
+      type: number
+      required: false
+    - name: grp_opt
+      label: Group Opt
+      type: text
+      required: false
+    - name: device_grp_name
+      label: Device Group Name
+      type: text
+      required: false
+  source: storage.yaml
+- name: POOL - Get
+  showHelp: true
+  help: |
+    Retrieves information about Mainframe Storage Pools.
+  roles:
+    - admin
+  description: Retrieves information about Mainframe Storage Pools
+  categories:
+    - Storage
+  icon: database
+  playbook: pool_get.yml
+  type: ansible
+  fields:
+    - type: number
+      name: horcm_inst
+      label: HORCM Instance
+      required: true
+      placeholder: "0"
+    - type: enum
+      name: storage_serial
+      label: Storage Serial Number
+      required: true
+      values:
+        - "530689"
+        - "530642"
+        - "530531"
+  source: storage.yaml
+- name: PVOL - Get
+  showHelp: true
+  help: >
+    Retrieve list of all PVOLs in specified Parity Group from Hitachi Vantara
+    Storage System.
+  roles:
+    - admin
+  description: Retrieves a list of Physical Volumes in a parity group
+  categories:
+    - Storage
+  icon: list-alt
+  playbook: pvol_get.yml
+  type: ansible
+  fields:
+    - type: number
+      name: horcm_inst
+      label: HORCM Instance
+      required: true
+      placeholder: "0"
+    - type: enum
+      name: storage_serial
+      label: Storage Serial Number
+      values:
+        - "530689"
+        - "530642"
+        - "530531"
+      required: true
+      placeholder: "530689"
+    - type: enum
+      name: parity_grp_id
+      label: Parity Group ID
+      values:
+        - 1-1
+        - 1-4
+        - 1-5
+        - 1-6
+        - 1-7
+        - 1-8
+      required: true
+  source: storage.yaml
+- name: Snapshot - Create
+  showHelp: true
+  help: |
+    Creates a snapshot between a PVOL and SVOL.
+  roles:
+    - admin
+  description: Creates a snapshot between a PVOL and SVOL
+  categories:
+    - Storage
+  icon: camera
+  playbook: snapshot_create.yml
+  type: ansible
+  fields:
+    - type: number
+      name: horcm_inst
+      label: HORCM Instance
+      required: true
+      placeholder: "1"
+    - type: enum
+      name: storage_serial
+      label: Storage Serial Number
+      required: true
+      values:
+        - "530689"
+        - "530642"
+        - "530531"
+    - type: text
+      name: pvol
+      label: Primary Volume (PVOL) ID
+      required: true
+      line: ldev
+      placeholder: "2826"
+    - type: text
+      name: svol
+      label: Secondary Volume (SVOL) ID
+      required: false
+      line: ldev
+      placeholder: "3082"
+    - type: number
+      name: pool_id
+      label: Pool ID
+      required: true
+      placeholder: "2"
+    - type: text
+      name: snapshot_group_name
+      label: Snapshot Group Name
+      required: true
+      placeholder: exportvol_snapshot-B0A-Ansible
+  source: storage.yaml
+- name: VSP Direct - Galahad
+  showHelp: true
+  help: |
+    Retrieves a list of Virtual Volumes based on criteria using VSP Direct.
+  roles:
+    - admin
+  description: Retrieves a list of Virtual Volumes based on criteria using VSP Direct
+  categories:
+    - Storage
+  icon: hdd
+  playbook: vsp_galahad.yml
+  tileClass: has-background-info-light
+  type: ansible
+  fields:
+    - name: storage_address
+      label: Storage Address
+      type: enum
+      values:
+        - 172.23.67.32
+        - 172.23.67.33
+        - 172.23.67.34
+      required: true
+    - name: instance
+      label: Raidcom Instance
+      type: number
+      required: true
+    - name: vault_storage_username
+      label: Username
+      type: text
+      required: true
+    - name: vault_storage_secret
+      label: Password
+      type: password
+      required: true
+      noLog: true
+    - name: state
+      label: State
+      type: enum
+      values:
+        - present
+        - split
+      required: true
+    - name: create_pvol
+      label: Create LDEV (PVOL) ?
+      type: checkbox
+      switch: true
+    - name: count_task1
+      label: Number of LDEVs to be created
+      type: number
+      default: 1
+      required: true
+      dependencies:
+        - name: create_pvol
+          values:
+            - true
+    - name: ldevid_task1
+      label: LDEV ID
+      type: number
+      required: true
+      dependencies:
+        - name: create_pvol
+          values:
+            - true
+    - name: parity_task1
+      label: Parity
+      type: enum
+      values:
+        - 1-1
+        - 1-4
+        - 1-5
+        - 1-6
+        - 1-7
+        - 1-8
+      required: true
+      dependencies:
+        - name: create_pvol
+          values:
+            - true
+    - name: capacity_task1
+      label: Capacity (in GB)
+      type: text
+      required: true
+      placeholder: 2518GB
+      dependencies:
+        - name: create_pvol
+          values:
+            - true
+    - name: add_pool
+      label: Add Pool alongwith PVOL ?
+      type: checkbox
+      switch: true
+    - name: pool_name
+      label: Pool Name
+      type: text
+      required: true
+      dependencies:
+        - name: add_pool
+          values:
+            - true
+    - name: pool_type
+      label: Pool type
+      type: enum
+      values:
+        - HDP
+      required: true
+      dependencies:
+        - name: add_pool
+          values:
+            - true
+    - name: parity_grp
+      label: Parity group
+      type: enum
+      values:
+        - 1-1
+        - 1-2
+        - 1-4
+        - 1-5
+        - 1-6
+        - 1-7
+        - 1-8
+      required: true
+      dependencies:
+        - name: add_pool
+          values:
+            - true
+    - name: count
+      label: Number of LDEVs to be created for selected Parity
+      type: number
+      required: false
+      default: 1
+      dependencies:
+        - name: add_pool
+          values:
+            - true
+    - name: pool_capacity
+      label: Pool Capacity in GB
+      type: text
+      required: true
+      placeholder: 2518GB
+      dependencies:
+        - name: add_pool
+          values:
+            - true
+    - name: pool_warning_threshold_rate
+      label: Pool Warning Threshold Rate
+      type: number
+      required: false
+      default: 80
+      dependencies:
+        - name: add_pool
+          values:
+            - true
+    - name: pool_depletion_threshold_rate
+      label: Pool Depletion Threshold Rate
+      type: number
+      required: false
+      default: 90
+      dependencies:
+        - name: add_pool
+          values:
+            - true
+    - name: expand_pool
+      label: Expand Pool ?
+      type: checkbox
+      switch: true
+    - name: pool_id_task3
+      type: number
+      label: Pool ID
+      required: true
+      dependencies:
+        - name: expand_pool
+          values:
+            - true
+    - name: count_task3
+      label: Number of LDEVs to be added in the Pool
+      type: number
+      default: 1
+      required: true
+      dependencies:
+        - name: expand_pool
+          values:
+            - true
+    - name: parity_grp_task3
+      label: Parity Group
+      type: enum
+      values:
+        - 1-1
+        - 1-2
+        - 1-4
+        - 1-5
+        - 1-6
+        - 1-7
+        - 1-8
+      required: true
+      dependencies:
+        - name: expand_pool
+          values:
+            - true
+    - name: capacity_task3
+      label: Capacity
+      type: text
+      required: true
+      placeholder: 10GB
+      dependencies:
+        - name: expand_pool
+          values:
+            - true
+    - name: create_ldev
+      label: Create LDEV (VVOL) ?
+      type: checkbox
+      switch: true
+    - name: poolid_task4
+      label: POOL ID
+      type: number
+      required: true
+      dependencies:
+        - name: create_ldev
+          values:
+            - true
+    - name: count_task4
+      label: Number of VVOLs to be created
+      type: number
+      default: 1
+      required: true
+      dependencies:
+        - name: create_ldev
+          values:
+            - true
+    - name: ldevid_task4
+      label: LDEV ID
+      type: number
+      required: true
+      dependencies:
+        - name: create_ldev
+          values:
+            - true
+    - name: ldev_name_task4
+      label: LDEV Name
+      type: text
+      required: true
+      dependencies:
+        - name: create_ldev
+          values:
+            - true
+    - name: ldev_size_task4
+      label: LDEV Capacity
+      type: text
+      required: true
+      placeholder: 2048GB
+      dependencies:
+        - name: create_ldev
+          values:
+            - true
+    - name: create_hostgroup
+      label: Create HostGroup ?
+      type: checkbox
+      switch: true
+    - name: hostgroupname_task5
+      label: HostGroup Name
+      type: text
+      required: true
+      dependencies:
+        - name: create_hostgroup
+          values:
+            - true
+    - name: portId_task5
+      label: Port Number
+      type: enum
+      values:
+        - CL1-E
+        - CL4-F
+        - CL8-F
+        - CL1-G
+        - CL5-G
+      required: true
+      dependencies:
+        - name: create_hostgroup
+          values:
+            - true
+    - name: hostmode_task5
+      label: Host Mode
+      type: enum
+      values:
+        - WINDOWS_EXTENSION
+        - LINUX
+      required: true
+      dependencies:
+        - name: create_hostgroup
+          values:
+            - true
+    - name: ldev_task5
+      label: Enter list of LDEV IDs (comma-separated)
+      type: text
+      placeholder: 3104,2817,3091
+      required: true
+      dependencies:
+        - name: create_hostgroup
+          values:
+            - true
+    - name: hostWwn_task5
+      label: Host WWN
+      type: text
+      required: false
+      placeholder: 10000a123456a123
+      dependencies:
+        - name: create_hostgroup
+          values:
+            - true
+    - name: create_snapshot
+      label: Create Snapshot Pair?
+      type: checkbox
+      switch: true
+    - name: ldevid_task6
+      label: LDEV ID
+      type: number
+      required: true
+      dependencies:
+        - name: create_snapshot
+          values:
+            - true
+    - name: poolid_task6
+      label: POOL ID
+      type: number
+      required: true
+      dependencies:
+        - name: create_snapshot
+          values:
+            - true
+    - name: snapname_task6
+      label: Snapshot Name
+      type: text
+      required: true
+      dependencies:
+        - name: create_snapshot
+          values:
+            - true
+    - name: mu_task6
+      label: Mirro Unit Number
+      type: text
+      required: true
+      dependencies:
+        - name: create_snapshot
+          values:
+            - true
+    - name: cascade
+      label: Can Cascade?
+      type: checkbox
+      switch: true
+      default: true
+      dependencies:
+        - name: create_snapshot
+          values:
+            - true
+    - name: split_snapshot
+      label: Split Snapshot ?
+      type: checkbox
+    - name: ldevid_task7
+      label: Primary Volume ID (LDEV ID)
+      type: number
+      required: true
+      dependencies:
+        - name: split_snapshot
+          values:
+            - true
+    - name: mu_task7
+      label: Mirror unit ID
+      type: number
+      required: true
+      dependencies:
+        - name: split_snapshot
+          values:
+            - true
+    - name: snapshotname_task7
+      label: Snapshot Name
+      type: text
+      required: true
+      dependencies:
+        - name: split_snapshot
+          values:
+            - true
+  source: storage.yaml
+- name: VSP Direct - Get PVOL Details
+  showHelp: true
+  help: |
+    Retrieves a list of Virtual Volumes based on criteria using VSP Direct.
+  roles:
+    - admin
+  description: Retrieves a list of Virtual Volumes based on criteria using VSP Direct
+  categories:
+    - Storage
+  icon: file-lines
+  playbook: ldev_facts.yml
+  type: ansible
+  fields:
+    - name: storage_address
+      label: Storage Address
+      type: enum
+      values:
+        - 172.23.67.32
+        - 172.23.67.33
+        - 172.23.67.34
+      required: true
+    - type: text
+      name: vault_storage_username
+      label: Username
+      required: true
+    - type: password
+      name: vault_storage_secret
+      label: Password
+      required: true
+      noLog: true
+    - type: text
+      name: ldevid
+      label: LDEV ID
+      required: true
+      placeholder: "61472"
+  source: storage.yaml
+- name: VVOL - Get
+  showHelp: true
+  help: |
+    Retrieves a list of Virtual Volumes based on criteria.
+  roles:
+    - admin
+  description: Retrieves a list of Virtual Volumes based on criteria
+  categories:
+    - Storage
+  icon: list-alt
+  playbook: vvol_get.yml
+  type: ansible
+  fields:
+    - type: number
+      name: horcm_inst
+      label: HORCM Instance
+      required: true
+      placeholder: "0"
+    - type: enum
+      name: storage_serial
+      label: Storage Serial Number
+      required: true
+      values:
+        - "530689"
+        - "530642"
+        - "530531"
+    - type: text
+      name: ldevtype
+      label: LDEV Type
+      required: true
+      placeholder: dp_volume
+    - type: text
+      name: pool_id
+      label: Pool ID
+      required: false
+      placeholder: "0"
+  source: storage.yaml
+- name: VVOL - Get All
+  showHelp: true
+  help: |
+    Retrieve the list of all VVOLs of specified LDEV type.
+  roles:
+    - admin
+  description: Retrieves the list of all Virtual Volumes for selected LDEV Type
+  categories:
+    - Storage
+  icon: list-alt
+  playbook: vvol_getall.yml
+  type: ansible
+  fields:
+    - type: number
+      name: horcm_inst
+      label: HORCM Instance
+      required: true
+      placeholder: "0"
+    - type: enum
+      name: storage_serial
+      label: Storage Serial Number
+      required: true
+      values:
+        - "530689"
+        - "530642"
+        - "530531"
+    - type: text
+      name: ldevtype
+      label: LDEV Type
+      required: true
+      placeholder: dp_volume
+  source: storage.yaml

@@ -1,0 +1,32 @@
+---
+# Copyright (c) Hitachi Vantara Corporation 2025. All rights reserved
+# Author: Vaishali Aggarwal <vaishali.aggarwal@hitachivantara.com>
+#
+# Abstract: Get Pool Information
+#
+# Description:
+# Get information about existing Pools in the Hitachi Vantara Storage System.
+#
+# Usage:
+# ansible-playbook pool_get.yml
+#
+- name: demo - pool get
+  hosts: localhost
+  gather_facts: false
+  become: true
+  collections:
+    - hitachivantara.mfstorage_raidcom
+
+  tasks:
+    - name: demo - Get Pools
+      pool:
+        #connectivity
+        horcm_inst: "{{horcm_inst}}"
+        storage_serial: "{{storage_serial}}"
+        #properties
+        state: get
+      register: results
+
+    - name: Display the existing Pools
+      debug:
+        msg: "{{results}}"

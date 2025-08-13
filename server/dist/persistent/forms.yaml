@@ -1,0 +1,460 @@
+categories:
+  - name: Default
+    icon: bars
+  - name: Storage
+    icon: bars
+roles:
+  - name: admin
+    groups:
+      - local/admins
+  - name: public
+    groups: []
+constants: {}
+forms:
+  - name: Get Storage Pools
+    showHelp: true
+    help: |
+      Retrieves information about Mainframe Storage Pools.
+    roles:
+      - admin
+    description: Retrieves information about Mainframe Storage Pools
+    categories:
+      - Default
+    icon: database
+    playbook: pool_get.yaml
+    type: ansible
+    fields:
+      - type: number
+        name: horcm_inst
+        label: HORCM Instance
+        required: true
+        placeholder: "0"
+      - type: text
+        name: storage_serial
+        label: Storage Serial Number
+        required: true
+        placeholder: "530689"
+    source: storage.yaml
+  - name: Get Virtual Volumes (VVol)
+    showHelp: true
+    help: |
+      Retrieves a list of Virtual Volumes based on criteria.
+    roles:
+      - admin
+    description: Retrieves a list of Virtual Volumes based on criteria
+    categories:
+      - Default
+    icon: list-alt
+    playbook: vvol_get.yaml
+    type: ansible
+    fields:
+      - type: number
+        name: horcm_inst
+        label: HORCMMM Instance
+        required: true
+        placeholder: "0"
+      - type: text
+        name: storage_serial
+        label: Storage Serial Number
+        required: true
+        placeholder: "530689"
+      - type: text
+        name: ldevtype
+        label: LDEV Type
+        required: true
+        placeholder: dp_volume
+      - type: text
+        name: pool_id
+        label: Pool ID
+        required: true
+        placeholder: "5"
+    source: storage.yaml
+  - name: Create Mainframe VVol
+    showHelp: true
+    help: |
+      Creates one or more Mainframe Virtual Volumes.
+    roles:
+      - admin
+    description: Creates one or more Mainframe Virtual Volumes
+    categories:
+      - Default
+    icon: hdd
+    playbook: mfvvol_create.yaml
+    type: ansible
+    fields:
+      - type: number
+        name: horcm_inst
+        label: HORCM Instance
+        required: true
+        placeholder: "0"
+      - type: text
+        name: storage_serial
+        label: Storage Serial Number
+        required: true
+        placeholder: "530689"
+      - type: text
+        name: pool_name
+        label: Pool Name/ID
+        required: true
+        placeholder: "5"
+      - type: number
+        name: num_ldevs
+        label: Number of LDEVs
+        required: true
+        default: 1
+      - type: text
+        name: ldev_prefix
+        label: LDEV Prefix
+        required: true
+        placeholder: "00:10:"
+      - type: text
+        name: initial_hex
+        label: Initial Hex Value
+        required: true
+        placeholder: 0F
+      - type: text
+        name: base_ldev_name
+        label: Base LDEV Name
+        required: true
+        placeholder: VK_Test_LDEV_
+      - type: number
+        name: name_start
+        label: LDEV Name Start Number
+        required: true
+        placeholder: "15"
+      - type: number
+        name: cylinder
+        label: Size (Cylinders)
+        required: true
+        placeholder: "10"
+      - type: text
+        name: emulation
+        label: Emulation Type
+        required: true
+        placeholder: 3390-A
+    source: storage.yaml
+  - name: Add LUN to Host Group
+    showHelp: true
+    help: |
+      Adds a LUN (LDEV) to a specified host group.
+    roles:
+      - admin
+    description: Adds a LUN (LDEV) to a specified host group
+    categories:
+      - Default
+    icon: link
+    playbook: hostgroup_lun_create.yaml
+    type: ansible
+    fields:
+      - type: number
+        name: horcm_inst
+        label: HORCM Instance
+        required: true
+        placeholder: "1"
+      - type: text
+        name: storage_serial
+        label: Storage Serial Number
+        required: true
+        placeholder: "530642"
+      - type: text
+        name: port_id
+        label: Port ID
+        required: true
+        placeholder: "CL1-E"
+      - type: number
+        name: host_grp_number
+        label: Host Group Number
+        required: true
+        placeholder: "4"
+      - type: text
+        name: ldev_id
+        label: LDEV ID
+        required: true
+        placeholder: "3098"
+    source: storage.yaml
+  - name: Create Storage Pool
+    showHelp: true
+    help: |
+      Creates a new mainframe storage pool.
+    roles:
+      - admin
+    description: Creates a new mainframe storage pool
+    categories:
+      - Default
+    icon: plus-square
+    playbook: pool_create.yaml
+    type: ansible
+    fields:
+      - type: number
+        name: horcm_inst
+        label: HORCM Instance
+        required: true
+        placeholder: "0"
+      - type: text
+        name: storage_serial
+        label: Storage Serial Number
+        required: true
+        placeholder: "530689"
+      - type: number
+        name: pool_id
+        label: Pool ID
+        required: true
+        placeholder: "6"
+      - type: text
+        name: pool_name
+        label: Pool Name
+        required: true
+        placeholder: "VK-Test-Ansible"
+      - type: text
+        name: ldev_id
+        label: LDEV IDs (comma separated)
+        required: true
+        placeholder: "61503"
+    source: storage.yaml
+  - name: Create Physical Volumes
+    showHelp: true
+    help: |
+      Creates one or more Mainframe Physical Volumes (PVOLs).
+    roles:
+      - admin
+    description: Creates one or more Mainframe Physical Volumes
+    categories:
+      - Default
+    icon: hdd-o
+    playbook: pvol_create.yaml
+    type: ansible
+    fields:
+      - type: number
+        name: horcm_inst
+        label: HORCM Instance
+        required: true
+        placeholder: "0"
+      - type: text
+        name: storage_serial
+        label: Storage Serial Number
+        required: true
+        placeholder: "530689"
+      - type: text
+        name: parity_grp_id
+        label: Parity Group ID
+        required: true
+        placeholder: "1-1"
+      - type: number
+        name: num_ldevs
+        label: Number of LDEVs
+        required: true
+        default: 1
+      - type: text
+        name: ldev_prefix
+        label: LDEV Prefix
+        required: true
+        placeholder: "00:F0:"
+      - type: text
+        name: initial_hex
+        label: Initial Hex Value
+        required: true
+        placeholder: "3F"
+      - type: text
+        name: base_ldev_name
+        label: Base LDEV Name
+        required: true
+        placeholder: "VK_PVOL_"
+      - type: number
+        name: name_start
+        label: LDEV Name Start Number
+        required: true
+        placeholder: "4"
+      - type: number
+        name: cylinder
+        label: Size (Cylinders)
+        required: true
+        placeholder: "15000"
+      - type: text
+        name: emulation
+        label: Emulation Type
+        required: true
+        placeholder: "3390-V"
+      - type: text
+        name: mp_blade_id
+        label: MP Blade ID
+        required: true
+        placeholder: "0"
+      - type: checkbox
+        name: format_ldevs
+        label: Format LDEVs
+        default: true
+    source: storage.yaml
+  - name: Get Physical Volumes
+    showHelp: true
+    help: |
+      Retrieves a list of Physical Volumes (PVOLs) in a parity group.
+    roles:
+      - admin
+    description: Retrieves a list of Physical Volumes in a parity group
+    categories:
+      - Default
+    icon: list
+    playbook: pvol_get.yaml
+    type: ansible
+    fields:
+      - type: number
+        name: horcm_inst
+        label: HORCM Instance
+        required: true
+        placeholder: "0"
+      - type: text
+        name: storage_serial
+        label: Storage Serial Number
+        required: true
+        placeholder: "530689"
+      - type: text
+        name: parity_grp_id
+        label: Parity Group ID
+        required: true
+        placeholder: "1-1"
+    source: storage.yaml
+  - name: Create Snapshot
+    showHelp: true
+    help: |
+      Creates a snapshot between a PVOL and SVOL.
+    roles:
+      - admin
+    description: Creates a snapshot between a PVOL and SVOL
+    categories:
+      - Default
+    icon: camera
+    playbook: snapshot_create.yaml
+    type: ansible
+    fields:
+      - type: number
+        name: horcm_inst
+        label: HORCM Instance
+        required: true
+        placeholder: "1"
+      - type: text
+        name: storage_serial
+        label: Storage Serial Number
+        required: true
+        placeholder: "530642"
+      - type: text
+        name: pvol
+        label: Primary Volume (PVOL) ID
+        required: true
+        placeholder: "2826"
+      - type: text
+        name: svol
+        label: Secondary Volume (SVOL) ID
+        required: true
+        placeholder: "3082"
+      - type: number
+        name: pool_id
+        label: Pool ID
+        required: true
+        placeholder: "2"
+      - type: text
+        name: snapshot_group_name
+        label: Snapshot Group Name
+        required: true
+        placeholder: "exportvol_snapshot-B0A-Ansible"
+    source: storage.yaml
+  - name: Add WWN to Host Group
+    showHelp: true
+    help: |
+      Adds a WWN (World Wide Name) to a specified host group.
+    roles:
+      - admin
+    description: Adds a WWN to a specified host group
+    categories:
+      - Default
+    icon: plug
+    playbook: hostgroup_wwn.yaml
+    type: ansible
+    fields:
+      - type: number
+        name: horcm_inst
+        label: HORCM Instance
+        required: true
+        placeholder: "1"
+      - type: text
+        name: storage_serial
+        label: Storage Serial Number
+        required: true
+        placeholder: "530642"
+      - type: text
+        name: port_id
+        label: Port ID
+        required: true
+        placeholder: "CL1-E"
+      - type: number
+        name: host_grp_number
+        label: Host Group Number
+        required: true
+        placeholder: "4"
+      - type: text
+        name: hba_wwn
+        label: HBA WWN
+        required: true
+        placeholder: "100000123456789d"
+      - type: text
+        name: wwn_nickname
+        label: WWN Nickname
+        required: true
+        placeholder: "server1_hba1"
+    source: storage.yaml
+  - name: Create Host Group
+    showHelp: true
+    help: |
+      Creates a new host group on a specified port.
+    roles:
+      - admin
+    description: Creates a new host group on a specified port
+    categories:
+      - Default
+    icon: server
+    playbook: hostgroup_create.yaml
+    type: ansible
+    fields:
+      - type: number
+        name: horcm_inst
+        label: HORCM Instance
+        required: true
+        placeholder: "1"
+      - type: text
+        name: storage_serial
+        label: Storage Serial Number
+        required: true
+        placeholder: "530642"
+      - type: text
+        name: port_id
+        label: Port ID
+        required: true
+        placeholder: "CL1-E"
+      - type: number
+        name: host_grp_number
+        label: Host Group Number
+        required: true
+        placeholder: "4"
+      - type: text
+        name: host_grp_name
+        label: Host Group Name
+        required: true
+        placeholder: "extstor_30642_to_30689-Ansible"
+      - type: text
+        name: host_mode
+        label: Host Mode
+        required: true
+        placeholder: "WIN_EX"
+    source: storage.yaml
+  - name: dummy
+    type: ansible
+    playbook: dummy.yaml
+    description: ""
+    roles:
+      - public
+    categories: []
+    tileClass: has-background-info-light
+    icon: bullseye
+    fields:
+      - name: field1
+        type: text
+        label: field1

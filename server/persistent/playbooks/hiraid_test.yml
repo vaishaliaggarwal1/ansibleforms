@@ -1,0 +1,566 @@
+---
+# Copyright Hitachi Vantara Corporation 2022, 2023
+# All rights reserved
+#
+# Author: Vaishali Aggarwal <vaishali.aggarwal@hitachivantara.com>
+#
+- name: Galahad
+  hosts: localhost
+  vars:
+    # Connection values
+    storage_serial: "{{ storage_serial }}"
+    horcm_inst: "{{ horcm_inst }}"
+
+    # -------------------------------------------------
+    # SAMPLE TABLE INPUTS (uncomment to test locally)
+    # -------------------------------------------------
+    # pvol_table:
+    #   - state_pvol: present
+    #     paritygrp_id_task1: "1-4"
+    #     capacity_task1: "5280628736"   # blocks or size per your environment
+    #     start_ldev_task1: 512
+    #     end_ldev_task1: 519
+    #     emulation_task1: "OPEN-V"
+    #     mp_blade_id_task1: 0
+    #     format_ldevs_task1: true
+    #   - state_pvol: present
+    #     paritygrp_id_task1: "1-5"
+    #     capacity_task1: "5280628736"
+    #     start_ldev_task1: 520
+    #     end_ldev_task1: 527
+    #     emulation_task1: "OPEN-V"
+    #     mp_blade_id_task1: 0
+    #     format_ldevs_task1: true
+
+    # pool_table:
+    #   - state_pool: add
+    #     pool_id_task2: 3
+    #     pool_name_task2: "Galahad"
+    #     ldev_id_task2: "512,513,514,515,516,517,518,519"
+    #     count_task2: "8"
+    #     warning_threshold_rate: "80"
+    #     depletion_threshold_rate: "90"
+
+    # vvol_table:
+    #   - state_vvol: present
+    #     pool_id_task3: 3
+    #     size_task3: "4294967296"  # blocks or 1g style per collection
+    #     start_ldev_task3: 2816
+    #     end_ldev_task3: 2825
+    #     emulation_task3: "OPEN-V"
+
+    # single_vvol_table:
+    #   - state_single: single
+    #     ldev_id_task4: 3104
+    #     pool_id_task4: 3
+    #     capacity_task4: "1g"
+
+    # modify_vvol_table:
+    #   - state_modify: modify
+    #     ldev_id_task5: 3104
+    #     ldev_name_task5: "MgmtTableVolume"
+
+    # hostgroup_table:
+    #   - state_hostgroup: present
+    #     portid_task6: "CL5-G"
+    #     host_group_number_task6: 1
+    #     host_group_name_task6: "MngmtTableVols"
+    #     host_mode_task6: "WIN_EX"
+
+    # hostgroup_lun_table:
+    #   - port_id_task7: "CL5-G"
+    #     host_grp_number_task7: 1
+    #     ldev_id_task7: "3104"
+    #     lun_id_task7: 0
+    #   - port_id_task7: "CL4-F"
+    #     host_grp_number_task7: 3
+    #     ldev_id_task7: "2816"
+    #     lun_id_task7: 0
+    #   - port_id_task7: "CL4-F"
+    #     host_grp_number_task7: 3
+    #     ldev_id_task7: "2817"
+    #     lun_id_task7: 1
+
+    # hostgroup_wwn_table:
+    #   - state_wwn: present
+    #     port_id_task8: "CL5-G"
+    #     host_grp_number_task8: 1
+    #     hba_wwn_task8: "100000109bd185d2"
+    #   - state_wwn: present
+    #     port_id_task8: "CL8-F"
+    #     host_grp_number_task8: 1
+    #     hba_wwn_task8: "100000109bd185a8"
+
+    # snapshot_table:
+    #   - state_snapshot: present
+    #     ldevid_task9: 3104
+    #     poolid_task9: 3
+    #     snapshot_name_task9: "mgmtvol_snapshot_1"
+    #     mu_task6: 3                      # one MU per row in table mode
+    #     snap_mode_task9: "normal"       # optional
+    #     # svol_task9: "-1"             # optional, for cascade scenarios
+
+    # port_id_task7: "CL1-E"
+    # host_grp_number_task7: "1"
+    # ldev_id_task7: "61473,61474"
+    # lun_id_task7: "0,1"
+
+    # storage_serial: 530642
+    # horcm_inst: 1
+
+    # state_snapshot: present
+    # ldevid_task9: 61473
+    # poolid_task9: 3
+    # snapshot_name_task9: "test_ansible"
+    # snap_mode_task9: "normal"
+    # mu_task6: 3
+    # svol_task9: "-1"
+
+    # state_pool: add
+    # pool_id_task2: 3
+    # pool_name_task2: "test"
+    # ldev_id_task2: 108, 109
+    # # count_task2: "2"
+    # warning_threshold_rate: "80"
+    # depletion_threshold_rate: "90"
+
+    # constants
+    # format_ldev: "{{ format_ldev | default(true) | bool }}"
+    # ansible_python_interpreter: "/usr/bin/python3"
+    # pvol_file: "openpvol_create.facts"
+
+  collections:
+    - hitachivantara.mfstorage_raidcom
+
+  tasks:
+    - name: display values
+      ansible.builtin.debug:
+        msg: |
+          Storage Serial: "{{ storage_serial }}"
+          Horcm Instance: "{{ horcm_inst }}"
+          state_pvol: "{{ item.state_pvol }}"
+          paritygrp_id_task1: "{{ item.paritygrp_id_task1 }}"
+          capacity_task1: "{{ item.capacity_task1 }}"
+          start_ldev_task1: "{{ item.start_ldev_task1 }}"
+          end_ldev_task1: "{{ item.end_ldev_task1 }}"
+          emulation_task1: "{{ item.emulation_task1 }}"
+          mp_blade_id_task1: "{{ item.mp_blade_id_task1 }}"
+          format_ldevs_task1: "{{ item.format_ldevs_task1 }}"
+      loop: "{{ pvol_table }}"
+
+    # TASK 1: Create PVOL
+    - name: Creating Open PVOLs with the addmultipleopenpvols function
+      openpvol:
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        state: "{{ item.state_pvol }}"
+        parity_grp_id: "{{ item.paritygrp_id_task1 }}"
+        capacity: "{{ item.capacity_task1 }}"
+        start_ldev: "{{ item.start_ldev_task1 }}"
+        end_ldev: "{{ item.end_ldev_task1 }}"
+        emulation: "{{ item.emulation_task1 }}"
+        # base_name: "{{ base_name_task1 }}"
+        # name_start: "{{ name_start_task1 }}"
+        mp_blade_id: "{{ item.mp_blade_id_task1 | default(0) | int}}"
+        format_ldevs: "{{ item.format_ldevs_task1 | default(true) | bool}}"
+      loop: "{{ pvol_table }}"
+      # loop_control:
+      #   label: "Creating Open PVOLs from {{ start_ldev_task1 }} to {{ end_ldev_task1 }} with capacity {{ capacity_task1 }} in parity group ID {{ paritygrp_id_task1 }}"
+      when: pvol_table is defined
+      register: create
+
+    - name: Debug output
+      debug:
+        var: create
+
+    - name: Show created LDEVs
+      debug:
+        msg: "Created LDEV: {{ item.ldev_id }} (Name: {{ item.name }}, Status: {{ item.status }})"
+      loop: "{{ create.pvol_table | default([]) }}"
+      when: create.pvol_table is defined and create.pvol_facts | length > 0
+
+    - name: Display format status summary
+      debug:
+        msg: |
+          Format status summary:
+          - Normal volumes: {{ create.format_status.normal_volumes }}
+          - Blocked volumes: {{ create.format_status.blocked_volumes }}
+          - Total volumes: {{ create.format_status.total_volumes }}
+          {% if create.format_status.note is defined %}
+          - {{ create.format_status.note }}
+          {% endif %}
+      when: create.format_status is defined
+
+    - name: Display warning for LDEVs in BLK status
+      debug:
+        msg: |
+          WARNING: Some LDEVs are in BLK (blocked) status due to ongoing formatting.
+          BLK status indicates that the quick format is still in progress.
+          Use the following command to check the status:
+          raidcom get ldev -ldev_id {{ item.ldev_id }} -I{{ horcm_inst }} -s {{ storage_serial }}
+      loop: "{{ create.pvol_table | default([]) }}"
+      when: create.pvol_table is defined and item.status is defined and item.status == 'BLK'
+
+    - name: Provide information on formatting
+      debug:
+        msg: |
+          NOTE: The module now includes a polling mechanism that waits for formatting to complete.
+          If volumes still show as BLK status, the formatting may take longer than the allocated polling time.
+          Quick format operations run asynchronously on the storage array and will continue in the background.
+          Volumes will automatically transition to NML status when formatting completes.
+      when:
+        # format_ldevs|bool and create.format_status.blocked_volumes|int > 0
+        - format_ldevs | default(false) | bool
+        - create.format_status is defined
+        - create.format_status.blocked_volumes | default(0) | int > 0
+
+    # - name: Save created Open PVOL information
+    #   copy:
+    #     content: "{{ create | to_nice_json }}"
+    #     dest: "{{ pvol_file }}"
+    #   when: create is defined and create.changed
+
+    # TASK 2: Create POOL
+    - name: Create Galahad pool (table)
+      pool:
+        #connectivity
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        #properties
+        state: "{{ item.state_pool | default(state_pool) }}"
+        pool_id: "{{ item.pool_id_task2 }}"
+        pool_name: "{{ item.pool_name_task2 }}"
+        ldev_id: "{{ (item.ldev_id_task2 | string).split(',') | map('int') | list }}"
+        #Optional
+        cnt: "{{ item.count_task2 | default('') | string }}"
+        # grp_opt: "{{ item.grp_opt_task2 }}"
+        # device_grp_name: "{{ item.device_grp_name_task2 }}"
+        user_threshold: "{{ item.warning_threshold_rate | default(warning_threshold_rate) }} {{ item.depletion_threshold_rate | default(depletion_threshold_rate) }}"
+      when: pool_table is defined
+      loop: "{{ pool_table }}"
+      register: results
+
+    - name: Create Galahad pool
+      pool:
+        #connectivity
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        #properties
+        state: "{{ state_pool }}"
+        pool_id: "{{ pool_id_task2}}"
+        pool_name: "{{ pool_name_task2 }}"
+        ldev_id: "{{ ldev_id_task2.split(',') | map('int') | list}}"
+        #Optional
+        cnt: "{{ count_task2 | default('') | string }}"
+        # grp_opt: "{{ grp_opt_task2 }}"
+        # device_grp_name: "{{ device_grp_name_task2 }}"
+        user_threshold: "{{warning_threshold_rate}} {{depletion_threshold_rate}}"
+      when: pool_table is not defined and pool_id_task2 is defined
+      register: results
+
+    - name: Display the created Mainframe Pools
+      debug:
+        msg: "{{ results }}"
+
+    # TASK 3: Create VVOLs
+    - name: Creating Open VVOLs with the addmultipleopenvvols function (table)
+      openvvol:
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        state: "{{ item.state_vvol | default(state_vvol) }}"
+        pool_id: "{{ item.pool_id_task3 }}"
+        capacity: "{{ item.size_task3 }}"
+        start_ldev: "{{ item.start_ldev_task3 }}"
+        end_ldev: "{{ item.end_ldev_task3 }}"
+        emulation: "{{ item.emulation_task3 }}"
+        # base_name: "{{ item.base_name_task3 }}"
+        # name_start: "{{ item.name_start_task3 }}"
+      loop_control:
+        label: "Creating Open VVOLs from {{ item.start_ldev_task3 }} to {{ item.end_ldev_task3 }} with capacity {{ item.size_task3 }}"
+      when: vvol_table is defined
+      loop: "{{ vvol_table }}"
+      register: openvvol
+
+    - name: Creating Open VVOLs with the addmultipleopenvvols function
+      openvvol:
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        state: "{{ state_vvol }}"
+        pool_id: "{{ pool_id_task3 }}"
+        capacity: "{{ size_task3 }}"
+        start_ldev: "{{ start_ldev_task3 }}"
+        end_ldev: "{{ end_ldev_task3 }}"
+        emulation: "{{ emulation_task3 }}"
+        # base_name: "{{ base_name_task3 }}"
+        # name_start: "{{ name_start_task3 }}"
+      loop_control:
+        label: "Creating Open VVOLs from {{ start_ldev_task3 }} to {{ end_ldev_task3 }} with capacity {{ size_task3 }}"
+      when: vvol_table is not defined and pool_id_task3 is defined
+      register: openvvol
+
+    - name: Display created VVOLs
+      debug:
+        msg: "{{openvvol}}"
+
+    # TASK 4: Create single Open VVOL using addldevnew function
+    - name: Create MgmtTableVolume VVOL (table)
+      openvvol:
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        state: "{{ item.state_single | default(state_single)}}"
+        ldev_id: "{{ item.ldev_id_task4 }}"
+        pool_id: "{{ item.pool_id_task4}}"
+        capacity: "{{ item.capacity_task4 }}" # value could be in blks (1GB = 2097152 blocks) or "1g"
+      when: single_vvol_table is defined
+      loop: "{{ single_vvol_table }}"
+      register: single_vvol
+
+    - name: Create MgmtTableVolume VVOL
+      openvvol:
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        state: "{{ state_single}}"
+        ldev_id: "{{ ldev_id_task4 }}"
+        pool_id: "{{ pool_id_task4}}"
+        capacity: "{{ capacity_task4 }}" # value could be in blks (1GB = 2097152 blocks) or "1g"
+      when: single_vvol_table is not defined and ldev_id_task4 is defined
+      register: single_vvol
+
+    - name: Debug output for single Open VVOL
+      debug:
+        msg: "{{single_vvol}}"
+
+    # TASK 5: Modify Open VVOL using modifyldevname function
+    - name: Modify MgmtTableVolume VVOL name (table)
+      openvvol:
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        state: "{{ item.state_modify | default(state_modify) }}"
+        ldev_id: "{{ item.ldev_id_task5 }}"
+        ldev_name: "{{ item.ldev_name_task5 }}"
+      when: modify_vvol_table is defined
+      loop: "{{ modify_vvol_table }}"
+      register: modified_vvol
+
+    - name: Modify MgmtTableVolume VVOL name
+      openvvol:
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        state: "{{ state_modify }}"
+        ldev_id: "{{ ldev_id_task5 }}"
+        ldev_name: "{{ ldev_name_task5 }}"
+      when: modify_vvol_table is not defined and ldev_id_task5 is defined
+      register: modified_vvol
+
+    - name: Debug output for modified Open VVOL
+      debug:
+        var: modified_vvol
+
+    # TASK 6: Create Host Group
+    - name: Create host group (table)
+      hostgroup:
+        #connectivity
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        #properties
+        state: "{{ item.state_hostgroup | default(state_hostgroup) }}"
+        port_id: "{{ item.portid_task6 }}"
+        host_grp_number: "{{ item.host_group_number_task6 }}"
+        host_grp_name: "{{ item.host_group_name_task6 }}"
+        host_mode: "{{ item.host_mode_task6 }}"
+      loop_control:
+        label: "Creating host group {{ item.host_group_name_task6 }} on port {{ item.portid_task6 }} with host group number {{ item.host_group_number_task6 }}"
+      when: hostgroup_table is defined
+      loop: "{{ hostgroup_table }}"
+      register: results
+
+    - name: Create host group
+      hostgroup:
+        #connectivity
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        #properties
+        state: "{{ state_hostgroup }}"
+        port_id: "{{ portid_task6 }}"
+        host_grp_number: "{{ host_group_number_task6 }}"
+        host_grp_name: "{{ host_group_name_task6 }}"
+        host_mode: "{{ host_mode_task6 }}"
+      loop_control:
+        label: "Creating host group {{ host_group_name_task6 }} on port {{ portid_task6 }} with host group number {{ host_group_number_task6 }}"
+      when: hostgroup_table is not defined and host_group_number_task6 is defined
+      register: results
+
+    - name: Display the created host group
+      debug:
+        msg: "{{results}}"
+
+    # TASK 7: Add LUNs to host group
+    - name: Add LUN to host group (table)
+      hostgroup_lun:
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        state: "{{ state_lun }}"
+        port_id: "{{ item.port_id_task7 }}"
+        host_grp_number: "{{ item.host_grp_number_task7 }}"
+        ldev_id: "{{ item.ldev_id_task7 }}"
+        lun: "{{ item.lun_id_task7 }}"
+      loop: "{{ hostgroup_lun_table }}"
+      loop_control:
+        label: "Adding LUN {{ item.lun_id_task7 }} to host group {{ item.host_grp_number_task7 }} on port {{ item.port_id_task7 }} with LDEV ID {{ item.ldev_id_task7 }}"
+      when: hostgroup_lun_table is defined
+      register: results
+
+    - name: Prepare ldev_ids and luns lists
+      ansible.builtin.set_fact:
+        _ldev_ids_list: "{{ ldev_id_task7.split(',') | map('trim') | list }}"
+        _luns_list: "{{ lun_id_task7.split(',') | map('trim') | map('int') | list }}"
+      when: hostgroup_lun_table is not defined and port_id_task7 is defined
+
+    - name: Initialize hostgroup_lun_map
+      ansible.builtin.set_fact:
+        hostgroup_lun_map: []
+      when: hostgroup_lun_table is not defined and port_id_task7 is defined
+
+    - name: Append items to hostgroup_lun_map
+      ansible.builtin.set_fact:
+        hostgroup_lun_map: "{{ hostgroup_lun_map + [ {'ldev_id': item.0, 'lun': item.1, 'port_id': port_id_task7, 'host_grp_number': host_grp_number_task7} ] }}"
+      loop: "{{ _ldev_ids_list | zip(_luns_list) }}"
+      when: port_id_task7 is defined
+
+    - name: Show value of hostgroup_lun_map
+      debug:
+        var: hostgroup_lun_map
+
+    - name: Add LUN to host group
+      hostgroup_lun:
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        state: "{{ state_lun }}"
+        port_id: "{{ item.port_id }}"
+        host_grp_number: "{{ item.host_grp_number }}"
+        ldev_id: "{{ item.ldev_id }}"
+        lun: "{{ item.lun }}"
+      loop: "{{ hostgroup_lun_map }}"
+      loop_control:
+        label: "Adding LUN {{ item.lun }} to host group {{ item.host_grp_number }} on port {{ item.port_id }} with LDEV ID {{ item.ldev_id }}"
+      when: hostgroup_lun_table is not defined and hostgroup_lun_map is defined and port_id_task7 is defined
+      register: results
+
+    - name: Display the created host group LUN
+      debug:
+        msg: "{{results}}"
+
+    # TASK 8: Add WWN to host group
+    - name: Add WWN to host group (table)
+      hostgroup_wwn:
+        #connectivity
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        #properties
+        state: "{{ item.state_wwn | default(state_wwn) }}"
+        port_id: "{{ item.port_id_task8}}"
+        host_grp_number: "{{ item.host_grp_number_task8 }}"
+        hba_wwn: "{{ item.hba_wwn_task8 }}"
+      loop_control:
+        label: "Adding WWN {{ item.hba_wwn_task8 }} to host group {{ item.host_grp_number_task8 }} on port {{ item.port_id_task8 }}"
+      when: hostgroup_wwn_table is defined
+      loop: "{{ hostgroup_wwn_table }}"
+      register: results
+
+    - name: Add WWN to host group
+      hostgroup_wwn:
+        #connectivity
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        #properties
+        state: "{{ state_wwn }}"
+        port_id: "{{ port_id_task8}}"
+        host_grp_number: "{{ host_grp_number_task8 }}"
+        hba_wwn: "{{ hba_wwn_task8 }}"
+      loop_control:
+        label: "Adding WWN {{ hba_wwn_task8 }} to host group {{ host_grp_number_task8 }} on port {{ port_id_task8 }}"
+      when: hostgroup_wwn_table is not defined and hba_wwn_task8 is defined
+      register: results
+      # loop:
+      #   - { port_id: "CL5-G", host_grp_number: 1, hba_wwn: "100000109bd185d2" }
+      #   - { port_id: "CL8-F", host_grp_number: 1, hba_wwn: "100000109bd185a8" }
+
+    - name: Display the created host group WWN
+      debug:
+        msg: "{{results}}"
+
+    - name: Debug storage_serial
+      ansible.builtin.debug:
+        var: storage_serial
+
+    # TASK 9: Create snapshot
+    - name: Expand snapshot_table into per-MU entries
+      ansible.builtin.set_fact:
+        snapshot_expanded: >-
+          {{ (snapshot_expanded | default([]))
+             + ([{
+                  'ldevid_task9': item.ldevid_task9,
+                  'poolid_task9': item.poolid_task9,
+                  'snapshot_name_task9': item.snapshot_name_task9,
+                  'snap_mode_task9': item.snap_mode_task9 | default(snap_mode_task9),
+                  'svol_task9': item.svol_task9 | default(svol_task9),
+                  'mu': mu
+                } for mu in range((item.mu_start | int), (item.mu_end | int) + 1)]) }}
+      loop: "{{ snapshot_table }}"
+      when: snapshot_table is defined
+
+    - name: Create snapshot (table)
+      snapshot:
+        #connectivity
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        #properties
+        state: "{{ state_snapshot }}"
+        pvol: "{{ item.ldevid_task9 }}"
+        pool_id: "{{ item.poolid_task9 }}"
+        snapshot_group_name: "{{ item.snapshot_name_task9 }}"
+        # Optional
+        mu_numbers: "{{ item.mu }}"
+        svol: "{{ item.svol_task9 }}"
+        snap_mode: "{{ item.snap_mode_task9 }}"
+      loop: "{{ snapshot_expanded | default([]) }}"
+      loop_control:
+        label: "Creating snapshot for LDEV ID {{ item.ldevid_task9 }} with snapshot group name {{ item.snapshot_name_task9 }} and MU number {{ item.mu }}"
+      when: snapshot_table is defined and (snapshot_expanded | length) > 0
+      register: results
+
+    - name: Create snapshot
+      snapshot:
+        #connectivity
+        horcm_inst: "{{ horcm_inst }}"
+        storage_serial: "{{ storage_serial }}"
+        #properties
+        state: "{{ state_snapshot}}"
+        pvol: "{{ ldevid_task9 }}"
+        pool_id: "{{ poolid_task9}}"
+        snapshot_group_name: "{{ snapshot_name_task9 }}"
+        # Optional
+        mu_numbers: "{{ item }}" # required when snap_mode is cascade
+        svol: "{{ svol_task9 }}" # required when snap_mode is cascade
+        snap_mode: "{{ snap_mode_task9 }}" # "normal" or "cascade" ; default is "normal"
+      # loop: "{{ mu_task6.split(',') | map('int') }}"
+      loop: "{{ mu_task6 | string | split(',') | map('int') }}"
+      loop_control:
+        label: "Creating snapshot for LDEV ID {{ ldevid_task9 }} with snapshot group name {{ snapshot_name_task9 }} and MU numbers {{ item }}"
+      when: snapshot_table is not defined and ldevid_task9 is defined
+      register: results
+      # loop:
+      #   - { ldevId: 3104, name: "mgmtvol_snapshot_1", mu: 3 }
+
+      #   - { ldevId: 2816, name: "exportvol_snapshot-b00", mu: 3 }
+      #   - { ldevId: 2816, name: "exportvol_snapshot-b00", mu: 4 }
+
+      #   - { ldevId: 2822, name: "exportvol_snapshot-b06", mu: 3 }
+      #   - { ldevId: 2822, name: "exportvol_snapshot-b06", mu: 4 }
+
+      #   - { ldevId: 2823, name: "exportvol_snapshot-b07", mu: 3 }
+      #   - { ldevId: 2823, name: "exportvol_snapshot-b07", mu: 4 }
+
+    - name: Display the created snapshot
+      debug:
+        msg: "{{results}}"

@@ -21,7 +21,7 @@
     # # ldev_id_task3: ""
     # # ldev_name: "test"
     # format_type: "qfmt"
-    # pool_name_task3: "shell_test" 
+    # pool_name_task3: "shell_test"
     # ldev_range_task3: "61473-61475"
     # ldev_size_task3: "30g"
     # emulation_type_task3: "OPEN-V"
@@ -34,7 +34,7 @@
     # log_file: "/tmp/ldev_error_log.txt"
     error_log_file: "/var/log/ansible/raidcom_errors.log"
     cause_msg: "{{ item.stderr_lines | select('search', 'CAUSE') | list | first | default('Unknown error') }}"
-    
+
     # Common connection info for all tasks
     connection_info:
       address: "{{ storage_address }}"
@@ -91,7 +91,7 @@
         # Initialize all_nml_status to a known state (false) for this iteration
         ALL_NML_STATUS="false"
         LDEV_STS_LIST=""
-        
+
         # Get LDEV IDs from Ansible var (assuming it's a comma-separated string)
         LDEV_IDS="{{ ldev_task1 }}"
 
@@ -117,7 +117,7 @@
         if [[ "$ALL_LDEVS_NML" = true ]]; then
           ALL_NML_STATUS="true"
         fi
-        
+
         # Output the status and the list for Ansible to capture and set facts
         echo "ANSIBLE_ALL_NML_STATUS:$ALL_NML_STATUS"
         echo "ANSIBLE_LDEV_STS_LIST:$(IFS=','; echo "${TEMP_LDEV_STS[*]}")"
@@ -125,11 +125,11 @@
         # Exit with 0 to indicate the script itself ran successfully,
         # the 'until' condition will decide the task's loop.
         exit 0
-      args:
-        # No 'creates' argument. If the file exists, it will skip the task,
-        # which means the polling loop won't run. This is for idempotent creation.
-        # For polling, you almost never want 'creates'.
-        # creates: /tmp/ansible_ldev_status_check.lock
+      # args:
+      # No 'creates' argument. If the file exists, it will skip the task,
+      # which means the polling loop won't run. This is for idempotent creation.
+      # For polling, you almost never want 'creates'.
+      # creates: /tmp/ansible_ldev_status_check.lock
       register: ldev_poll_result
       until: "ldev_poll_result.stdout.find('ANSIBLE_ALL_NML_STATUS:true') != -1"
       retries: "{{ max_retries | int + 1 }}" # Total attempts including the first
@@ -179,8 +179,8 @@
       loop_control:
         label: "Initializing LDEV {{ item }} of capacity {{ ldev_size_task3 }}"
       when: ldev_id_task3 is defined
-    
-    # - name: Format LDEV 
+
+    # - name: Format LDEV
     #   shell: raidcom initialize ldev -ldev_id {{ item }} -operation qfmt -I{{ instance }} -s {{ storage_serial }}
     #   loop: "{{ ldev_id_task3.split(',') | map('int') | list }}"
     #   loop_control:
@@ -190,7 +190,7 @@
     # - name: Display the formatted LDEV
     #   debug:
     #     var: format_ldev
-        
+
     # Add Hostgroup
     - name: Create Hostgroup
       shell: raidcom add host_grp -host_grp_name {{host_grp_name_task4}} -port {{port_task4}} -I{{instance}} -s {{storage_serial}}
@@ -214,7 +214,7 @@
       register: lun_result
       when: ldev_id_task4 is defined and host_grp_name_task4 is defined and port_task4 is defined
     - name: Display the LUN result
-      debug:  
+      debug:
         var: lun_result
     - name: Add WWN
       shell: raidcom add hba_wwn -port {{port_task4}} {{host_grp_name_task4}} -hba_wwn {{hba_wwn_task4}} -I{{instance}} -s {{storage_serial}}

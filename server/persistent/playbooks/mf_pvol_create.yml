@@ -1,0 +1,39 @@
+# Copyright (c) Hitachi Vantara Corporation 2025. All rights reserved
+# Author: Krishi Jain <krishi.jain@hitachivantara.com>
+#
+# Description:
+# Create PVOLs on Hitachi Vantara Mainframe storage systems using Ansible.
+#
+# Usage:
+# ansible-playbook mf_pvol_create.yml
+#
+- name: demo - mfpvol_create
+  hosts: localhost
+  gather_facts: false
+  become: true
+  collections:
+    - hitachivantara.mfstorage_raidcom
+
+  tasks:
+    - name: Create MF PVOLs
+      pvol:
+        #connectivity
+        horcm_inst: "{{horcm_inst}}"
+        storage_serial: "{{storage_serial}}"
+        #properties
+        state: present
+        parity_grp_id: "{{parity_grp_id}}"
+        num_ldevs: "{{num_ldevs}}"
+        ldev_prefix: "{{ldev_prefix}}"
+        initial_hex: "{{initial_hex}}"
+        base_ldev_name: "{{base_ldev_name}}"
+        name_start: "{{name_start}}"
+        cylinder: "{{cylinder}}"
+        emulation: "{{emulation}}"
+        mp_blade_id: "{{mp_blade_id}}"
+        format_ldevs: "{{format_ldevs}}"
+      register: results
+
+    - name: Display the created MF PVOLs
+      debug:
+        msg: "{{results}}"
