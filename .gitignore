@@ -42,3 +42,6 @@ ontap*.yaml
 
 # git
 .gitignore
+collectionCopy
+raidcom.py
+raidcom.py

@@ -7,33 +7,10 @@
   gather_facts: false
 
   vars:
-    storage_address: "172.23.67.34"
-    storage_username: "maintenance"
-    storage_secret: "raid-maintenance"
-    storage_serial: "530642"
-    instance: "1"
-    parity_task1: "1-1"
-    ldev_task1: "439,440,441"
-    emulation_task1: "OPEN-V"
-    capacity_task1: "50g"
-    mp_blade_id_task1: 0
-
-    # # ldev_id_task3: ""
-    # # ldev_name: "test"
-    # format_type: "qfmt"
-    # pool_name_task3: "shell_test"
-    # ldev_range_task3: "61473-61475"
-    # ldev_size_task3: "30g"
-    # emulation_type_task3: "OPEN-V"
-    # mp_blade_task3: 0
-
-    max_retries: 10
-    delay_seconds: 3
-    all_nml: false
-    ldev_sts_list: []
-    # log_file: "/tmp/ldev_error_log.txt"
-    error_log_file: "/var/log/ansible/raidcom_errors.log"
-    cause_msg: "{{ item.stderr_lines | select('search', 'CAUSE') | list | first | default('Unknown error') }}"
+    max_retries: 10     # loop variablle for maximum retries to check PVOL status
+    delay_seconds: 3    # delay between retries
+    all_nml: false      # Variable to track if all LDEVs are NML
+    ldev_sts_list: []   # List to store LDEV statuses
 
     # Common connection info for all tasks
     connection_info:
@@ -48,19 +25,35 @@
         HORCMINST: "{{ instance }}"
       changed_when: false
 
-    # Task 1 - Add LDEV (PVOL)
+    - name: Prepare LDEV data for looping
+      ansible.builtin.set_fact:
+        pvol_prepared: >
+          {%- set new_list = [] -%}
+          {%- for row in pvol -%}
+          {%- set ldevs = row.ldev_task1.split(',') -%}
+          {%- for ldev in ldevs -%}
+          {%- set _ = new_list.append({
+              'parity_task1': row.parity_task1,
+              'ldev_task1': ldev,
+              'capacity_task1': row.capacity_task1,
+              'emulation_task1': row.emulation_task1,
+              'mp_blade_id_task1': row.mp_blade_id_task1
+            }) -%}
+          {%- endfor -%}
+          {%- endfor -%}
+          {{ new_list }}
+      when: pvol is defined and pvol | length > 0
+
     - name: Add LDEV (PVOL)
-      shell: raidcom add ldev -parity_grp_id {{ parity_task1 }} -ldev_id {{item}} -emulation {{ emulation_task1 }} -capacity {{ capacity_task1 }} -mp_blade_id {{mp_blade_id_task1}} -I{{ instance }} -s {{ storage_serial }}
-      # environment:
-      #   HORCMINST: "{{ instance }}"
-      register: ldev
-      loop: "{{ ldev_task1.split(',') | map('string') }}"
+      ansible.builtin.shell: "raidcom add ldev -parity_grp_id {{ item.parity_task1 }} -ldev_id {{ item.ldev_task1 }} -emulation {{ item.emulation_task1 }} -capacity {{ item.capacity_task1 }} -mp_blade_id {{ item.mp_blade_id_task1 }} -I{{ instance }} -s {{ storage_serial }}"
+      loop: "{{ pvol_prepared }}"
       loop_control:
-        label: "Creating LDEV {{ item }} on parity {{ parity_task1 }}"
-      when: ldev_task1 | length > 0
-    - name: Display the LDEV
-      debug:
-        var: ldev
+        label: "Creating LDEV {{ item.ldev_task1 }} on parity {{ item.parity_task1 }}"
+      when: create_pvol is defined and create_pvol
+      register: ldev
+    # - name: Display the LDEV
+    #   debug:
+    #     var: ldev
     # - name: Log error in a file and print a brief message
     #   ansible.builtin.include_tasks: parse_ldev_results.yml
 
@@ -69,16 +62,16 @@
         seconds: 1
 
     - name: Initialize LDEV
-      shell: raidcom initialize ldev -ldev_id {{ item }} -operation qfmt -I{{ instance }} -s {{ storage_serial }}
+      shell: raidcom initialize ldev -ldev_id {{ item.ldev_task1 }} -operation qfmt -I{{ instance }} -s {{ storage_serial }}
       register: initialize_ldev_result
-      loop: "{{ ldev_task1.split(',') | map('string') }}"
+      loop: "{{ pvol_prepared }}"
       loop_control:
-        label: "Initializing LDEV {{ item }}"
-      when: ldev_task1 is defined
+        label: "Creating LDEV {{ item.ldev_task1 }} on parity {{ item.parity_task1 }}"
+      when: create_pvol is defined and create_pvol
 
-    - name: Wait for 3 seconds
+    - name: Wait for 2 seconds
       pause:
-        seconds: 3
+        seconds: 2
 
     # This task will perform the check on LDEV Satus and loop until the LDEV Status are 'NML' (Normal).
     - name: Wait for LDEVs to reach NML status with retries
@@ -93,7 +86,7 @@
         LDEV_STS_LIST=""
 
         # Get LDEV IDs from Ansible var (assuming it's a comma-separated string)
-        LDEV_IDS="{{ ldev_task1 }}"
+        LDEV_IDS="{{ pvol_prepared | map(attribute='ldev_task1') | list | join(',') }}"
 
         # Loop through each LDEV ID and check its status
         ALL_LDEVS_NML=true
@@ -164,74 +157,125 @@
     # --- Start of other tasks (these will only run if the LDEV are NML) ---
     # Task 2 - Add DP Pool
     - name: Add DP Pool
-      shell: raidcom add dp_pool -pool_name {{ pool_name_task2}} -ldev_id {{ ldev_task2 }} -user_threshold {{ threshold_1 }} {{threshold_2}} -I{{ instance }} -s {{ storage_serial }}
+      shell: raidcom add dp_pool -pool_name {{ item.pool_name_task2}} -ldev_id {{ item.ldev_task2 }} -user_threshold {{ item.threshold_1 }} {{item.threshold_2}} -I{{ instance }} -s {{ storage_serial }}
       register: dp_pool_result
-      when: pool_name_task2 is defined and ldev_task2 is defined and all_nml
+      loop: "{{pool}}"
+      when: pool is defined and all_nml
     - name: Display the DP Pool
       debug:
         var: dp_pool_result
 
+    - name: Wait for 15 seconds
+      pause:
+        seconds: 15
+
+    - name: Prepare VVOL data for looping
+      ansible.builtin.set_fact:
+        vvol_prepared: >
+          {%- set new_list = [] -%}
+          {%- for row in vvol -%}
+          {%- set ldevs = row.ldev_id_task3.split(',') -%}
+          {%- for ldev in ldevs -%}
+          {%- set _ = new_list.append({
+                'pool_name_task3': row.pool_name_task3,
+                'ldev_id_task3': ldev,
+                'ldev_size_task3': row.ldev_size_task3,
+                'emulation_type_task3': row.emulation_type_task3,
+                'mp_blade_task3': row.mp_blade_task3
+              }) -%}
+          {%- endfor -%}
+          {%- endfor -%}
+          {{ new_list }}
+      when: vvol is defined
+
     # Task 3 - Add LDEV (VVOL)
     - name: Add LDEV (VVOL - using ldev id)
-      shell: raidcom add ldev -pool {{ pool_name_task3 }} -ldev_id {{ item }} -capacity {{ ldev_size_task3 }} -emulation {{ emulation_type_task3 }} -mp_blade_id {{ mp_blade_task3 }} -I{{ instance }} -s {{ storage_serial }}
+      shell: raidcom add ldev -pool {{ item.pool_name_task3 }} -ldev_id {{ item.ldev_id_task3 }} -capacity {{ item.ldev_size_task3 }} -emulation {{ item.emulation_type_task3 }} -mp_blade_id {{ item.mp_blade_task3 }} -I{{ instance }} -s {{ storage_serial }}
       register: vvol_ldev
-      loop: "{{ ldev_id_task3.split(',') | map('int') | list }}"
+      loop: "{{ vvol_prepared }}"
       loop_control:
-        label: "Initializing LDEV {{ item }} of capacity {{ ldev_size_task3 }}"
-      when: ldev_id_task3 is defined
+        label: "Adding LDEV {{ item.ldev_id_task3 }} in Pool {{ item.pool_name_task3 }}"
+      when: vvol is defined
 
-    # - name: Format LDEV
-    #   shell: raidcom initialize ldev -ldev_id {{ item }} -operation qfmt -I{{ instance }} -s {{ storage_serial }}
-    #   loop: "{{ ldev_id_task3.split(',') | map('int') | list }}"
-    #   loop_control:
-    #     label: "Initializing LDEV {{ item }}"
-    #   register: format_ldev
-    #   when: format_type_task3 is defined
-    # - name: Display the formatted LDEV
-    #   debug:
-    #     var: format_ldev
+    - name: Prepare Hostgroup data for looping
+      ansible.builtin.set_fact:
+        hostgroup_prepared: >
+          {%- set new_list = [] -%}
+          {%- for row in hostgroup -%}
+          {%- set ldevs = row.ldev_id_task4.split(',') -%}
+          {%- for ldev in ldevs -%}
+          {%- set _ = new_list.append({
+                'host_grp_name_task4': row.host_grp_name_task4,
+                'port_task4': row.port_task4,
+                'ldev_id_task4': ldev
+              }) -%}
+          {%- endfor -%}
+          {%- endfor -%}
+          {{ new_list }}
 
     # Add Hostgroup
     - name: Create Hostgroup
-      shell: raidcom add host_grp -host_grp_name {{host_grp_name_task4}} -port {{port_task4}} -I{{instance}} -s {{storage_serial}}
+      shell: raidcom add host_grp -host_grp_name {{item.host_grp_name_task4}} -port {{item.port_task4}} -I{{instance}} -s {{storage_serial}}
       register: host_group
-      when: host_grp_name_task4 is defined and port_task4 is defined
+      loop: "{{hostgroup}}"
+      when: hostgroup is defined
     - name: Display the Hostgroup
       debug:
         var: host_group
     - name: Modify host group
-      shell: raidcom modify host_grp -port {{port_task4}} {{host_grp_name_task4}} -host_mode {{host_mode_task4}} -I{{instance}} -s {{storage_serial}}
+      shell: raidcom modify host_grp -port {{item.port_task4}} {{item.host_grp_name_task4}} -host_mode {{item.host_mode_task4}} -I{{instance}} -s {{storage_serial}}
       register: modify_host_group
-      when: host_mode_task4 is defined
+      loop: "{{hostgroup}}"
+      when: hostgroup is defined
     - name: Display the modified Hostgroup
       debug:
         var: modify_host_group
     - name: Add LUN
-      shell: raidcom add lun -port {{port_task4}} {{host_grp_name_task4}} -ldev_id {{item}} -I{{instance}} -s {{storage_serial}}
-      loop: "{{ ldev_id_task4.split(',') | map('int') | list }}"
+      shell: raidcom add lun -port {{item.port_task4}} {{item.host_grp_name_task4}} -ldev_id {{item.ldev_id_task4}} -I{{instance}} -s {{storage_serial}}
+      loop: "{{hostgroup_prepared}}"
       loop_control:
-        label: "Adding LDEV {{item}}"
+        label: "Adding LDEV {{item.ldev_id_task4}}"
       register: lun_result
-      when: ldev_id_task4 is defined and host_grp_name_task4 is defined and port_task4 is defined
+      when: hostgroup is defined
     - name: Display the LUN result
       debug:
         var: lun_result
     - name: Add WWN
-      shell: raidcom add hba_wwn -port {{port_task4}} {{host_grp_name_task4}} -hba_wwn {{hba_wwn_task4}} -I{{instance}} -s {{storage_serial}}
+      shell: raidcom add hba_wwn -port {{item.port_task4}} {{item.host_grp_name_task4}} -hba_wwn {{item.hba_wwn_task4}} -I{{instance}} -s {{storage_serial}}
       register: wwn_result
-      when: port_task4 is defined and hba_wwn_task4 is defined
+      loop: "{{hostgroup}}"
+      when: hostgroup is defined
     - name: Display the WWN result
       debug:
         var: wwn_result
 
     # Task 5 : Create snapshot pair
+    - name: Prepare snapshot data for looping
+      ansible.builtin.set_fact:
+        snapshot_prepared: >
+          {%- set new_list = [] -%}
+          {%- for row in snapshot -%}
+          {%- set mirror_id = row.mirror_id_task5.split(',') -%}
+          {%- for mid in mirror_id -%}
+          {%- set _ = new_list.append({
+                'pvol_task5': row.pvol_task5,
+                'pool_task5': row.pool_task5,
+                'snapshotgroup_task5': row.snapshotgroup_task5,
+                'mirror_id_task5': mid,
+                'snap_mode_task5': row.snap_mode_task5
+              }) -%}
+          {%- endfor -%}
+          {%- endfor -%}
+          {{ new_list }}
+      when: snapshot is defined
+      
     - name: Create snapshot pair
-      shell: raidcom add snapshot -ldev_id {{pvol_task5}} -pool {{pool_task5}} -snapshotgroup {{snapshotgroup_task5}} -mirror_id {{item}} -snap_mode {{snap_mode_task5}} -I{{ instance }} -s {{ storage_serial }}
+      shell: raidcom add snapshot -ldev_id {{item.pvol_task5}} -pool {{item.pool_task5}} -snapshotgroup {{item.snapshotgroup_task5}} -mirror_id {{item.mirror_id_task5}} -snap_mode {{item.snap_mode_task5}} -I{{ instance }} -s {{ storage_serial }}
       register: snapshot_pair
-      loop: "{{ mirror_id_task5.split(',') | map('int') | list }}"
+      loop: "{{ snapshot_prepared }}"
       loop_control:
-        label: "Creating snapshot pair for LDEV {{ pvol_task5 }} in Snapshot Group {{ snapshotgroup_task5 }} with MU number {{ item }}"
-      when: pvol_task5 is defined and snapshotgroup_task5 is defined
+        label: "Creating snapshot pair for LDEV {{ item.pvol_task5 }} in Snapshot Group {{ item.snapshotgroup_task5 }} with MU number {{ item.mirror_id_task5 }}"
+      when: snapshot_prepared is defined
     - name: Display the snapshot pair result
       debug:
         var: snapshot_pair

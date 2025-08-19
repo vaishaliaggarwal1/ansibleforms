@@ -1,0 +1,237 @@
+---
+####################################################################
+# GALAHAD  Playbook
+####################################################################
+- name: GALAHAD Storage playbook (Shell)
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    # storage_address: "172.23.67.34"
+    # storage_username: "maintenance"
+    # storage_secret: "raid-maintenance"
+    # storage_serial: "530642"
+    # instance: "1"
+    # parity_task1: "1-1"
+    # ldev_task1: "439,440,441"
+    # emulation_task1: "OPEN-V"
+    # capacity_task1: "50g"
+    # mp_blade_id_task1: 0
+
+    # # ldev_id_task3: ""
+    # # ldev_name: "test"
+    # format_type: "qfmt"
+    # pool_name_task3: "shell_test"
+    # ldev_range_task3: "61473-61475"
+    # ldev_size_task3: "30g"
+    # emulation_type_task3: "OPEN-V"
+    # mp_blade_task3: 0
+
+    max_retries: 10
+    delay_seconds: 3
+    all_nml: false
+    ldev_sts_list: []
+    # log_file: "/tmp/ldev_error_log.txt"
+    error_log_file: "/var/log/ansible/raidcom_errors.log"
+    cause_msg: "{{ item.stderr_lines | select('search', 'CAUSE') | list | first | default('Unknown error') }}"
+
+    # Common connection info for all tasks
+    connection_info:
+      address: "{{ storage_address }}"
+      username: "{{ storage_username }}"
+      password: "{{ storage_secret }}"
+
+  tasks:
+    - name: Reset command status
+      shell: raidcom reset command_status
+      environment:
+        HORCMINST: "{{ instance }}"
+      changed_when: false
+
+    # Task 1 - Add LDEV (PVOL)
+    - name: Add LDEV (PVOL)
+      shell: raidcom add ldev -parity_grp_id {{ parity_task1 }} -ldev_id {{item}} -emulation {{ emulation_task1 }} -capacity {{ capacity_task1 }} -mp_blade_id {{mp_blade_id_task1}} -I{{ instance }} -s {{ storage_serial }}
+      # environment:
+      #   HORCMINST: "{{ instance }}"
+      register: ldev
+      loop: "{{ ldev_task1.split(',') | map('string') }}"
+      loop_control:
+        label: "Creating LDEV {{ item }} on parity {{ parity_task1 }}"
+      when: ldev_task1 | length > 0
+    - name: Display the LDEV
+      debug:
+        var: ldev
+    # - name: Log error in a file and print a brief message
+    #   ansible.builtin.include_tasks: parse_ldev_results.yml
+
+    - name: Wait for 1 seconds
+      pause:
+        seconds: 1
+
+    - name: Initialize LDEV
+      shell: raidcom initialize ldev -ldev_id {{ item }} -operation qfmt -I{{ instance }} -s {{ storage_serial }}
+      register: initialize_ldev_result
+      loop: "{{ ldev_task1.split(',') | map('string') }}"
+      loop_control:
+        label: "Initializing LDEV {{ item }}"
+      when: ldev_task1 is defined
+
+    - name: Wait for 3 seconds
+      pause:
+        seconds: 3
+
+    # This task will perform the check on LDEV Satus and loop until the LDEV Status are 'NML' (Normal).
+    - name: Wait for LDEVs to reach NML status with retries
+      shell: |
+        #!/bin/bash
+        # Ensure Ansible facts are available.
+        # This script will run the raidcom command, parse its output,
+        # and echo a simple result back for Ansible's 'until' to evaluate.
+
+        # Initialize all_nml_status to a known state (false) for this iteration
+        ALL_NML_STATUS="false"
+        LDEV_STS_LIST=""
+
+        # Get LDEV IDs from Ansible var (assuming it's a comma-separated string)
+        LDEV_IDS="{{ ldev_task1 }}"
+
+        # Loop through each LDEV ID and check its status
+        ALL_LDEVS_NML=true
+        TEMP_LDEV_STS=()
+
+        IFS=',' read -ra ADDR <<< "$LDEV_IDS"
+        for ldev_id in "${ADDR[@]}"; do
+          # Execute raidcom and extract STS
+          RAIDCOM_OUTPUT=$(raidcom get ldev -ldev_id "${ldev_id}" -I{{ instance }} -s {{ storage_serial }} 2>&1)
+          CURRENT_STS=$(echo "$RAIDCOM_OUTPUT" | grep -oP 'STS\s*:\s*\K\w+')
+
+          TEMP_LDEV_STS+=("$CURRENT_STS")
+
+          if [[ "$CURRENT_STS" != "NML" ]]; then
+            ALL_LDEVS_NML=false
+            break # No need to check further if one is not NML
+          fi
+        done
+
+        # Set the all_nml_status for Ansible's until condition
+        if [[ "$ALL_LDEVS_NML" = true ]]; then
+          ALL_NML_STATUS="true"
+        fi
+
+        # Output the status and the list for Ansible to capture and set facts
+        echo "ANSIBLE_ALL_NML_STATUS:$ALL_NML_STATUS"
+        echo "ANSIBLE_LDEV_STS_LIST:$(IFS=','; echo "${TEMP_LDEV_STS[*]}")"
+
+        # Exit with 0 to indicate the script itself ran successfully,
+        # the 'until' condition will decide the task's loop.
+        exit 0
+      # args:
+      # No 'creates' argument. If the file exists, it will skip the task,
+      # which means the polling loop won't run. This is for idempotent creation.
+      # For polling, you almost never want 'creates'.
+      # creates: /tmp/ansible_ldev_status_check.lock
+      register: ldev_poll_result
+      until: "ldev_poll_result.stdout.find('ANSIBLE_ALL_NML_STATUS:true') != -1"
+      retries: "{{ max_retries | int + 1 }}" # Total attempts including the first
+      delay: "{{ delay_seconds | int }}" # Delay between attempts
+      changed_when: false # This task only polls, doesn't change state
+      failed_when: false # Don't fail the task itself if not NML yet, let 'until' handle it.
+
+    # After the loop, explicitly set facts based on the final result
+    - name: Set final all_nml and ldev_sts_list facts
+      set_fact:
+        all_nml: "{{ 'true' in ldev_poll_result.stdout | default('') }}"
+        ldev_sts_list: >-
+          {% set matched_list = ldev_poll_result.stdout | default('') | regex_search('ANSIBLE_LDEV_STS_LIST:(.*)', '\\1') %}
+          {% if matched_list %}
+            {{ matched_list[0].split(',') | list }}
+          {% else %}
+            [] # Provide an empty list if no match is found
+          {% endif %}
+      delegate_to: localhost
+      delegate_facts: true # Ensure these are applied to localhost for subsequent tasks
+
+    - name: Final verification after LDEV status loop
+      debug:
+        msg: "All LDEVs are NML. Proceeding with subsequent tasks."
+      when: hostvars['localhost']['all_nml'] | default(False)
+
+    - name: Fail the playbook if LDEVs did not reach NML state after all retries
+      fail:
+        msg: "LDEVs failed to reach NML state after {{ max_retries }} retries. Final STS list: {{ hostvars['localhost']['ldev_sts_list'] | default('N/A') }}"
+      when: not hostvars['localhost']['all_nml'] | default(False)
+
+    # --- Start of other tasks (these will only run if the LDEV are NML) ---
+    # Task 2 - Add DP Pool
+    - name: Add DP Pool
+      shell: raidcom add dp_pool -pool_name {{ pool_name_task2}} -ldev_id {{ ldev_task2 }} -user_threshold {{ threshold_1 }} {{threshold_2}} -I{{ instance }} -s {{ storage_serial }}
+      register: dp_pool_result
+      when: pool_name_task2 is defined and ldev_task2 is defined and all_nml
+    - name: Display the DP Pool
+      debug:
+        var: dp_pool_result
+
+    # Task 3 - Add LDEV (VVOL)
+    - name: Add LDEV (VVOL - using ldev id)
+      shell: raidcom add ldev -pool {{ pool_name_task3 }} -ldev_id {{ item }} -capacity {{ ldev_size_task3 }} -emulation {{ emulation_type_task3 }} -mp_blade_id {{ mp_blade_task3 }} -I{{ instance }} -s {{ storage_serial }}
+      register: vvol_ldev
+      loop: "{{ ldev_id_task3.split(',') | map('int') | list }}"
+      loop_control:
+        label: "Initializing LDEV {{ item }} of capacity {{ ldev_size_task3 }}"
+      when: ldev_id_task3 is defined
+
+    # - name: Format LDEV
+    #   shell: raidcom initialize ldev -ldev_id {{ item }} -operation qfmt -I{{ instance }} -s {{ storage_serial }}
+    #   loop: "{{ ldev_id_task3.split(',') | map('int') | list }}"
+    #   loop_control:
+    #     label: "Initializing LDEV {{ item }}"
+    #   register: format_ldev
+    #   when: format_type_task3 is defined
+    # - name: Display the formatted LDEV
+    #   debug:
+    #     var: format_ldev
+
+    # Add Hostgroup
+    - name: Create Hostgroup
+      shell: raidcom add host_grp -host_grp_name {{host_grp_name_task4}} -port {{port_task4}} -I{{instance}} -s {{storage_serial}}
+      register: host_group
+      when: host_grp_name_task4 is defined and port_task4 is defined
+    - name: Display the Hostgroup
+      debug:
+        var: host_group
+    - name: Modify host group
+      shell: raidcom modify host_grp -port {{port_task4}} {{host_grp_name_task4}} -host_mode {{host_mode_task4}} -I{{instance}} -s {{storage_serial}}
+      register: modify_host_group
+      when: host_mode_task4 is defined
+    - name: Display the modified Hostgroup
+      debug:
+        var: modify_host_group
+    - name: Add LUN
+      shell: raidcom add lun -port {{port_task4}} {{host_grp_name_task4}} -ldev_id {{item}} -I{{instance}} -s {{storage_serial}}
+      loop: "{{ ldev_id_task4.split(',') | map('int') | list }}"
+      loop_control:
+        label: "Adding LDEV {{item}}"
+      register: lun_result
+      when: ldev_id_task4 is defined and host_grp_name_task4 is defined and port_task4 is defined
+    - name: Display the LUN result
+      debug:
+        var: lun_result
+    - name: Add WWN
+      shell: raidcom add hba_wwn -port {{port_task4}} {{host_grp_name_task4}} -hba_wwn {{hba_wwn_task4}} -I{{instance}} -s {{storage_serial}}
+      register: wwn_result
+      when: port_task4 is defined and hba_wwn_task4 is defined
+    - name: Display the WWN result
+      debug:
+        var: wwn_result
+
+    # Task 5 : Create snapshot pair
+    - name: Create snapshot pair
+      shell: raidcom add snapshot -ldev_id {{pvol_task5}} -pool {{pool_task5}} -snapshotgroup {{snapshotgroup_task5}} -mirror_id {{item}} -snap_mode {{snap_mode_task5}} -I{{ instance }} -s {{ storage_serial }}
+      register: snapshot_pair
+      loop: "{{ mirror_id_task5.split(',') | map('int') | list }}"
+      loop_control:
+        label: "Creating snapshot pair for LDEV {{ pvol_task5 }} in Snapshot Group {{ snapshotgroup_task5 }} with MU number {{ item }}"
+      when: pvol_task5 is defined and snapshotgroup_task5 is defined
+    - name: Display the snapshot pair result
+      debug:
+        var: snapshot_pair

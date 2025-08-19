@@ -1,0 +1,73 @@
+---
+# Delete GALAHAD Storage Playbook
+- name: Delete GALAHAD Storage playbook (Shell)
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Reset command status
+      shell: raidcom reset command_status -I{{instance}}
+
+    # Task 1: Delete snapshot group
+    - name: Delete snapshot group
+      shell: raidcom delete snapshot -snapshotgroup {{item.snapshot_name}} -I{{ instance }} -s {{ storage_serial }}
+      loop: "{{ snapshot }}"
+      loop_control:
+        label: "Snapshot group deleted {{ item.snapshot_name }}"
+      when: snapshot is defined
+    - name: get status of snapshot deletion
+      shell: raidcom get command_status -I{{instance}}
+      register: snapshot_pair
+      when: snapshot is defined
+    - name: Display the deleted snapshot status
+      debug: 
+        var: snapshot_pair
+
+    - name: Reset command status
+      shell: raidcom reset command_status -I{{instance}}
+
+    # Task 2: Delete Hostgroup
+    - name: Delete Hostgroup
+      shell: raidcom delete host_grp -port "{{item.hg_port}}" ""{{item.hg_name}}"" -I{{instance}} -s {{storage_serial}}
+      loop: "{{hostgroup}}"
+      when: hostgroup is defined
+    - name: get status of Hostgroup deletion
+      shell: raidcom get command_status -I{{instance}}
+      register: host_group
+      when: hostgroup is defined
+    - name: Display the deleted Hostgroup status
+      debug: 
+        var: host_group
+
+    - name: Reset command status
+      shell: raidcom reset command_status -I{{instance}}
+
+    # Task 3: Delete VVOL
+    - name: Delete LDEV (VVOL - using ldev id)
+      shell: raidcom delete ldev -ldev_id {{ item }} -I{{ instance }} -s {{ storage_serial }}
+      loop: "{{ vvol_id.split(',') | map('string') }}"
+      loop_control:
+        label: "Deleting LDEV {{ item }}"
+      when: vvol_id is defined and vvol_id | length > 0
+    - name: get status of VVOL deletion
+      shell: raidcom get command_status -I{{instance}}
+      register: ldev_vvol
+      when: vvol_id is defined
+    - name: Display the deleted VVOL status
+      debug: 
+        var: ldev_vvol
+
+    - name: Reset command status
+      shell: raidcom reset command_status -I{{instance}}
+
+    # Task 4: Delete POOL
+    - name: Delete Pool & Pool Volume
+      shell: raidcom delete pool -pool {{ pool_name }} -delete_volume "{{delete_volume}}" -I{{ instance }} -s {{ storage_serial }}
+      when: pool_name is defined
+    - name: get status of Pool & PVOL deletion
+      shell: raidcom get command_status -I{{instance}}
+      register: pool_result
+      when: pool_name is defined
+    - name: Display Pool deletion status
+      debug:
+        var: pool_result
